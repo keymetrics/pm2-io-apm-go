@@ -10,6 +10,7 @@ import (
 )
 
 func main() {
+	test := float64(0)
 	Pm2Io := pm2_io_apm_go.Pm2Io{
 		PublicKey:  "9nc25845w31vqeq",
 		PrivateKey: "1e34mwmtaid0pr7",
@@ -23,10 +24,14 @@ func main() {
 				},
 			},
 		},
+		AxmMonitor: map[string]pm2_io_apm_go.AxmMonitor{
+			"Test": pm2_io_apm_go.AxmMonitor{
+				Value: test,
+			},
+		},
 	}
 
 	Pm2Io.Start()
-	Pm2Io.SendStatus()
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		for i := 0; i < 1000; i++ {
@@ -35,12 +40,14 @@ func main() {
 	})
 
 	go func() {
-		http.ListenAndServe(":8080", nil)
+		ticker := time.NewTicker(2 * time.Second)
+		log.Println("created ticker")
+		for {
+			<-ticker.C
+			test++
+			Pm2Io.SetProbe("Test", test)
+		}
 	}()
 
-	ticker := time.NewTicker(time.Second)
-	for {
-		<-ticker.C
-		Pm2Io.SendStatus()
-	}
+	http.ListenAndServe(":8080", nil)
 }

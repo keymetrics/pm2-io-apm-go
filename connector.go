@@ -19,6 +19,7 @@ type Pm2Io struct {
 	PrivateKey string
 	Name       string
 	AxmActions []AxmAction
+	AxmMonitor map[string]AxmMonitor
 
 	ws           *websocket.Conn
 	startTime    time.Time
@@ -53,9 +54,9 @@ func (pm2io *Pm2Io) Start() {
 
 	headers := http.Header{}
 	headers.Add("X-KM-PUBLIC", pm2io.PublicKey)
-	headers.Add("X-KM-DATA", "")
+	headers.Add("X-KM-DATA", "951240892faa9aa4a4c0c59ee30eefca")
 	headers.Add("X-KM-SERVER", pm2io.Name)
-	headers.Add("X-PM2-VERSION", "10.0.0")
+	headers.Add("X-PM2-VERSION", "0.0.1-go")
 	headers.Add("X-PROTOCOL-VERSION", "1")
 
 	c, _, err := websocket.DefaultDialer.Dial(u.String(), headers)
@@ -91,16 +92,42 @@ func (pm2io *Pm2Io) Start() {
 								"success":     true,
 								"id":          payload["process_id"],
 								"action_name": name,
-								"return":      response,
 							},
 						}
 						jsonString, _ := json.Marshal(res)
 						pm2io.ws.WriteMessage(websocket.TextMessage, jsonString)
+						res2 := MessageMap{
+							Channel: "axm:reply",
+							Payload: map[string]interface{}{
+								"at": time.Now().Unix(),
+								"data": map[string]interface{}{
+									"action_name": name,
+									"return":      response,
+								},
+							},
+						}
+						jsonString2, _ := json.Marshal(res2)
+						pm2io.ws.WriteMessage(websocket.TextMessage, jsonString2)
 					}
 				}
 			}
 		}
 	}()
+
+	go func() {
+		ticker := time.NewTicker(time.Second)
+		log.Println("created ticker")
+		for {
+			<-ticker.C
+			pm2io.SendStatus()
+		}
+	}()
+}
+
+func (pm2io *Pm2Io) SetProbe(probe string, value float64) {
+	pm2io.AxmMonitor[probe] = AxmMonitor{
+		Value: value,
+	}
 }
 
 func (pm2io *Pm2Io) CPUPercent() (float64, error) {
@@ -146,8 +173,9 @@ func (pm2io *Pm2Io) SendStatus() {
 	kmProc := []Process{}
 
 	options := AxmOptions{
-		HeapDump:  true,
-		Profiling: true,
+		HeapDump:     true,
+		Profiling:    true,
+		CustomProbes: true,
 	}
 
 	parent, _ := p.Parent()
@@ -168,6 +196,7 @@ func (pm2io *Pm2Io) SendStatus() {
 			Memory:      m.Alloc,
 			NodeEnv:     "production",
 			AxmActions:  pm2io.AxmActions,
+			AxmMonitor:  pm2io.AxmMonitor,
 			AxmOptions:  options,
 		})
 	}
@@ -179,11 +208,11 @@ func (pm2io *Pm2Io) SendStatus() {
 			Process: kmProc,
 			Server: Server{
 				Loadavg:     []float64{0, 0, 0},
-				TotalMem:    900,
+				TotalMem:    900000000,
 				FreeMem:     800,
 				Hostname:    pm2io.Name,
 				Uptime:      pm2io.startTime.Unix(),
-				Pm2Version:  "10.0.0",
+				Pm2Version:  "0.0.1-go",
 				Type:        "golang",
 				Interaction: true,
 			},
@@ -203,7 +232,7 @@ func (pm2io *Pm2Io) SendStatus() {
 	if err != nil {
 		fmt.Println("error:", err)
 	}
-	//log.Println(string(b))
+	log.Println(string(b))
 
 	pm2io.ws.WriteMessage(websocket.TextMessage, b)
 }

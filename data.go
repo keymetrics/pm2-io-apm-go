@@ -44,11 +44,10 @@ type Process struct {
 		Type                 string `json:"type"`
 		BranchExistsOnRemote bool   `json:"branch_exists_on_remote"`
 	} `json:"versioning,omitempty"`
-	NodeEnv    string      `json:"node_env,omitempty"`
-	AxmActions []AxmAction `json:"axm_actions"`
-	AxmMonitor struct {
-	} `json:"axm_monitor,omitempty"`
-	AxmOptions AxmOptions `json:"axm_options"`
+	NodeEnv    string                `json:"node_env,omitempty"`
+	AxmActions []AxmAction           `json:"axm_actions"`
+	AxmMonitor map[string]AxmMonitor `json:"axm_monitor,omitempty"`
+	AxmOptions AxmOptions            `json:"axm_options"`
 }
 type Server struct {
 	Loadavg     []float64 `json:"loadavg"`
@@ -98,4 +97,7 @@ type AxmActionSucess struct {
 	Id         int    `json:"id"`
 	ActionName string `json:"action_name"`
 	Return     string `json:"return"`
+}
+type AxmMonitor struct {
+	Value float64 `json:"value"`
 }
