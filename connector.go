@@ -8,11 +8,14 @@ import (
 	"net/url"
 	"os"
 	"runtime"
+	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/shirou/gopsutil/process"
 )
+
+var version = "3.0.0-go"
 
 type Pm2Io struct {
 	PublicKey  string
@@ -22,6 +25,7 @@ type Pm2Io struct {
 	AxmMonitor map[string]AxmMonitor
 
 	ws           *websocket.Conn
+	mu           sync.Mutex
 	startTime    time.Time
 	lastCpuTotal float64
 }
@@ -54,9 +58,9 @@ func (pm2io *Pm2Io) Start() {
 
 	headers := http.Header{}
 	headers.Add("X-KM-PUBLIC", pm2io.PublicKey)
-	headers.Add("X-KM-DATA", "951240892faa9aa4a4c0c59ee30eefca")
+	headers.Add("X-KM-SECRET", pm2io.PrivateKey)
 	headers.Add("X-KM-SERVER", pm2io.Name)
-	headers.Add("X-PM2-VERSION", "0.0.1-go")
+	headers.Add("X-PM2-VERSION", version)
 	headers.Add("X-PROTOCOL-VERSION", "1")
 
 	c, _, err := websocket.DefaultDialer.Dial(u.String(), headers)
@@ -86,28 +90,18 @@ func (pm2io *Pm2Io) Start() {
 				for _, i := range pm2io.AxmActions {
 					if i.ActionName == name {
 						response := i.Callback()
-						res := MessageMap{
-							Channel: "trigger:action:success",
-							Payload: map[string]interface{}{
-								"success":     true,
-								"id":          payload["process_id"],
+						pm2io.Send("trigger:action:success", map[string]interface{}{
+							"success":     true,
+							"id":          payload["process_id"],
+							"action_name": name,
+						})
+						pm2io.Send("axm:reply", map[string]interface{}{
+							"at": time.Now().Unix(),
+							"data": map[string]interface{}{
 								"action_name": name,
+								"return":      response,
 							},
-						}
-						jsonString, _ := json.Marshal(res)
-						pm2io.ws.WriteMessage(websocket.TextMessage, jsonString)
-						res2 := MessageMap{
-							Channel: "axm:reply",
-							Payload: map[string]interface{}{
-								"at": time.Now().Unix(),
-								"data": map[string]interface{}{
-									"action_name": name,
-									"return":      response,
-								},
-							},
-						}
-						jsonString2, _ := json.Marshal(res2)
-						pm2io.ws.WriteMessage(websocket.TextMessage, jsonString2)
+						})
 					}
 				}
 			}
@@ -116,10 +110,21 @@ func (pm2io *Pm2Io) Start() {
 
 	go func() {
 		ticker := time.NewTicker(time.Second)
-		log.Println("created ticker")
+		log.Println("created status ticker")
 		for {
 			<-ticker.C
 			pm2io.SendStatus()
+		}
+	}()
+
+	go func() {
+		ticker := time.NewTicker(5 * time.Second)
+		log.Println("created ping ticker")
+		for {
+			<-ticker.C
+			pm2io.mu.Lock()
+			pm2io.ws.WriteMessage(websocket.PingMessage, []byte{})
+			pm2io.mu.Unlock()
 		}
 	}()
 }
@@ -164,7 +169,7 @@ func (pm2io *Pm2Io) CPUPercent() (float64, error) {
 }
 
 func (pm2io *Pm2Io) SendStatus() {
-	p, err := process.NewProcess(int32(os.Getpid()))
+	p, _ := process.NewProcess(int32(os.Getpid()))
 	cp, _ := pm2io.CPUPercent()
 
 	var m runtime.MemStats
@@ -176,6 +181,8 @@ func (pm2io *Pm2Io) SendStatus() {
 		HeapDump:     true,
 		Profiling:    true,
 		CustomProbes: true,
+		Error:        true,
+		Errors:       true,
 	}
 
 	parent, _ := p.Parent()
@@ -183,7 +190,7 @@ func (pm2io *Pm2Io) SendStatus() {
 	for _, p := range sProc {
 		kmProc = append(kmProc, Process{
 			Pid:         p.Pid,
-			Name:        "coucou",
+			Name:        pm2io.Name,
 			Interpreter: "golang",
 			RestartTime: 0,
 			CreatedAt:   pm2io.startTime.Unix(),
@@ -194,6 +201,7 @@ func (pm2io *Pm2Io) SendStatus() {
 			PmID:        0,
 			CPU:         int(cp),
 			Memory:      m.Alloc,
+			Versioning:  nil,
 			NodeEnv:     "production",
 			AxmActions:  pm2io.AxmActions,
 			AxmMonitor:  pm2io.AxmMonitor,
@@ -203,36 +211,55 @@ func (pm2io *Pm2Io) SendStatus() {
 
 	log.Println("nb proc", len(kmProc))
 
-	status := PayLoad{
-		Data: Data{
-			Process: kmProc,
-			Server: Server{
-				Loadavg:     []float64{0, 0, 0},
-				TotalMem:    900000000,
-				FreeMem:     800,
-				Hostname:    pm2io.Name,
-				Uptime:      pm2io.startTime.Unix(),
-				Pm2Version:  "0.0.1-go",
-				Type:        "golang",
-				Interaction: true,
-			},
+	pm2io.Send("status", Status{
+		Process: kmProc,
+		Server: Server{
+			Loadavg:     []float64{0, 0, 0},
+			TotalMem:    900000000,
+			FreeMem:     800,
+			Hostname:    pm2io.Name,
+			Uptime:      pm2io.startTime.Unix(),
+			Pm2Version:  version,
+			Type:        "golang",
+			Interaction: true,
 		},
-		Active:     true,
-		ServerName: pm2io.Name,
-		InternalIP: "Coucou",
-		Protected:  false,
-		RevCon:     true,
-	}
-	msg := Message{
-		Payload: status,
-		Channel: "status",
-	}
+	})
+}
 
+func (pm2io *Pm2Io) SendMessage(msg Message) {
 	b, err := json.Marshal(msg)
 	if err != nil {
 		fmt.Println("error:", err)
 	}
 	log.Println(string(b))
 
+	pm2io.mu.Lock()
+	defer pm2io.mu.Unlock()
+
 	pm2io.ws.WriteMessage(websocket.TextMessage, b)
+}
+
+func (pm2io *Pm2Io) Send(channel string, data interface{}) {
+	pm2io.SendMessage(Message{
+		Channel: channel,
+		Payload: PayLoad{
+			Process: Process{
+				PmID: 0,
+				Name: pm2io.Name,
+			},
+			Data:       data,
+			Active:     true,
+			ServerName: pm2io.Name,
+			Protected:  false,
+			RevCon:     true,
+		},
+	})
+}
+
+func (pm2io *Pm2Io) NotifyError(err error) {
+	log.Println("ERRRRROOOOOOORRRR")
+	pm2io.Send("process:exception", Error{
+		Message: err.Error(),
+		Stack:   fmt.Sprintf("%+v\n", err),
+	})
 }

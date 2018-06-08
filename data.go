@@ -1,8 +1,8 @@
 package pm2_io_apm_go
 
 type Message struct {
-	Payload PayLoad `json:"payload"`
-	Channel string  `json:"channel"`
+	Payload interface{} `json:"payload"`
+	Channel string      `json:"channel"`
 }
 
 type MessageMap struct {
@@ -12,42 +12,48 @@ type MessageMap struct {
 
 // Sending
 type PayLoad struct {
-	Data       Data   `json:"data"`
-	Active     bool   `json:"active"`
-	ServerName string `json:"server_name"`
-	InternalIP string `json:"internal_ip"`
-	Protected  bool   `json:"protected"`
-	RevCon     bool   `json:"rev_con"`
+	Data       interface{} `json:"data"`
+	Process    Process     `json:"process,omitempty"`
+	Active     bool        `json:"active"`
+	ServerName string      `json:"server_name"`
+	InternalIP string      `json:"internal_ip"`
+	Protected  bool        `json:"protected"`
+	RevCon     bool        `json:"rev_con"`
 }
-type Data struct {
+type Error struct {
+	Message string `json:"message"`
+	Stack   string `json:"stack"`
+}
+type Status struct {
 	Process []Process `json:"process"`
 	Server  Server    `json:"server"`
 }
 type Process struct {
-	Pid         int32  `json:"pid"`
-	Name        string `json:"name"`
-	Interpreter string `json:"interpreter,omitempty"`
-	RestartTime int    `json:"restart_time,omitempty"`
-	CreatedAt   int64  `json:"created_at,omitempty"`
-	ExecMode    string `json:"exec_mode"`
-	Watching    bool   `json:"watching,omitempty"`
-	PmUptime    int64  `json:"pm_uptime,omitempty"`
-	Status      string `json:"status"`
-	PmID        int    `json:"pm_id"`
-	CPU         int    `json:"cpu"`
-	Memory      uint64 `json:"memory"`
-	Versioning  struct {
-		Comment              string `json:"comment"`
-		URL                  string `json:"url"`
-		Revision             string `json:"revision"`
-		Branch               string `json:"branch"`
-		Type                 string `json:"type"`
-		BranchExistsOnRemote bool   `json:"branch_exists_on_remote"`
-	} `json:"versioning,omitempty"`
-	NodeEnv    string                `json:"node_env,omitempty"`
-	AxmActions []AxmAction           `json:"axm_actions"`
-	AxmMonitor map[string]AxmMonitor `json:"axm_monitor,omitempty"`
-	AxmOptions AxmOptions            `json:"axm_options"`
+	Pid         int32                 `json:"pid"`
+	Name        string                `json:"name"`
+	Interpreter string                `json:"interpreter,omitempty"`
+	RestartTime int                   `json:"restart_time,omitempty"`
+	CreatedAt   int64                 `json:"created_at,omitempty"`
+	ExecMode    string                `json:"exec_mode"`
+	Watching    bool                  `json:"watching,omitempty"`
+	PmUptime    int64                 `json:"pm_uptime,omitempty"`
+	Status      string                `json:"status"`
+	PmID        int                   `json:"pm_id"`
+	CPU         int                   `json:"cpu"`
+	Memory      uint64                `json:"memory"`
+	Versioning  *Versioning           `json:"versioning,omitempty"`
+	NodeEnv     string                `json:"node_env,omitempty"`
+	AxmActions  []AxmAction           `json:"axm_actions"`
+	AxmMonitor  map[string]AxmMonitor `json:"axm_monitor,omitempty"`
+	AxmOptions  AxmOptions            `json:"axm_options"`
+}
+type Versioning struct {
+	Comment              string `json:"comment"`
+	URL                  string `json:"url"`
+	Revision             string `json:"revision"`
+	Branch               string `json:"branch"`
+	Type                 string `json:"type"`
+	BranchExistsOnRemote bool   `json:"branch_exists_on_remote"`
 }
 type Server struct {
 	Loadavg     []float64 `json:"loadavg"`

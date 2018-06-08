@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -14,7 +15,7 @@ func main() {
 	Pm2Io := pm2_io_apm_go.Pm2Io{
 		PublicKey:  "9nc25845w31vqeq",
 		PrivateKey: "1e34mwmtaid0pr7",
-		Name:       "Golang_connector",
+		Name:       "Golang_application",
 		AxmActions: []pm2_io_apm_go.AxmAction{
 			pm2_io_apm_go.AxmAction{
 				ActionName: "Test",
@@ -46,6 +47,7 @@ func main() {
 			<-ticker.C
 			test++
 			Pm2Io.SetProbe("Test", test)
+			Pm2Io.NotifyError(errors.New("Niaha"))
 		}
 	}()
 
