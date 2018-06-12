@@ -26,14 +26,14 @@ func TestAction(t *testing.T) {
 	t.Run("Must return correct value", func(t *testing.T) {
 		resp := services.CallAction("MyAction")
 		if resp == nil {
-			t.Fail()
+			t.Fatal("response is nil")
 		}
 	})
 
 	t.Run("Must return nil for unknown action call", func(t *testing.T) {
 		resp := services.CallAction("Unknown")
 		if resp != nil {
-			t.Fail()
+			t.Fatal("response is not nil")
 		}
 	})
 }
