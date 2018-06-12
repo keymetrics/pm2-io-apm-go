@@ -7,6 +7,15 @@ type Metric struct {
 	Category string  `json:"type"`
 	Historic bool    `json:"historic"`
 	Unit     string  `json:"unit"`
+
+	Function func() float64 `json:"-"`
+}
+
+func (metric *Metric) Get() float64 {
+	if metric.Function != nil {
+		metric.Value = metric.Function()
+	}
+	return metric.Value
 }
 
 func (metric *Metric) Set(value float64) {

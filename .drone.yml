@@ -9,3 +9,17 @@ pipeline:
       - go get
       - go test $(go list ./...)
       - go build
+
+  slack:
+    image: plugins/slack
+    channel: ci
+    when:
+      status: [ success, failure ]
+    template: |
+      {{#success build.status}}
+        pm2-io-apm-go {{ build.commit }} on {{ build.branch }} succeeded @{{ build.author }}
+      {{else}}
+        pm2-io-apm-go build {{ build.number }} on {{ build.branch }} failed @{{ build.author }}
+      {{/success}}
+      see {{ build.link }}
+    secrets: [ slack_webhook ]

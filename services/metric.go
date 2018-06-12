@@ -11,6 +11,7 @@ func AddMetric(metric *structures.Metric) {
 func GetMetricsAsMap() map[string]*structures.Metric {
 	m := make(map[string]*structures.Metric, len(metrics))
 	for _, metric := range metrics {
+		metric.Get()
 		m[metric.Name] = metric
 	}
 	return m

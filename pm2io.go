@@ -33,6 +33,8 @@ func (pm2io *Pm2Io) Start(publicKey string, privateKey string, name string) {
 	pm2io.Notifier = &features.Notifier{
 		Transporter: pm2io.transporter,
 	}
+	services.AddMetric(metrics.GoRoutines())
+	services.AddMetric(metrics.CGoCalls())
 	pm2io.transporter.Connect(publicKey, privateKey, name, version)
 
 	/*services.AddAction(&structures.Action{
@@ -123,6 +125,10 @@ func (pm2io *Pm2Io) SendStatus() {
 			Pm2Version:  version,
 			Type:        "golang",
 			Interaction: true,
+			CPU: structures.CPU{
+				Number: runtime.NumCPU(),
+			},
+			NodeVersion: runtime.Version(),
 		},
 	})
 }

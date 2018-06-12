@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"strings"
 	"time"
 
 	"github.com/keymetrics/pm2-io-apm-go/services"
@@ -36,6 +38,13 @@ func main() {
 		},
 	})
 
+	services.AddAction(&structures.Action{
+		ActionName: "Get env",
+		Callback: func() string {
+			return strings.Join(os.Environ(), "\n")
+		},
+	})
+
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		for i := 0; i < 1000; i++ {
 			fmt.Fprintf(w, "Hello")
@@ -65,7 +74,7 @@ func main() {
 		}
 	}()
 
-	go func() {
+	/*go func() {
 		ticker := time.NewTicker(6 * time.Second)
 		log.Println("created log ticker")
 		for {
@@ -74,7 +83,7 @@ func main() {
 			err := errors.WithStack(cause)
 			Pm2Io.Panic(err)
 		}
-	}()
+	}()*/
 
 	http.ListenAndServe(":8080", nil)
 }
