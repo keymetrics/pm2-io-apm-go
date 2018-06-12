@@ -6,10 +6,10 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/f-hj/pm2-io-apm-go/features"
-	"github.com/f-hj/pm2-io-apm-go/features/metrics"
-	"github.com/f-hj/pm2-io-apm-go/services"
-	"github.com/f-hj/pm2-io-apm-go/structures"
+	"github.com/keymetrics/pm2-io-apm-go/features"
+	"github.com/keymetrics/pm2-io-apm-go/features/metrics"
+	"github.com/keymetrics/pm2-io-apm-go/services"
+	"github.com/keymetrics/pm2-io-apm-go/structures"
 	"github.com/shirou/gopsutil/process"
 )
 

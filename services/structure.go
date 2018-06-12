@@ -1,6 +1,6 @@
 package services
 
-import "github.com/f-hj/pm2-io-apm-go/structures"
+import "github.com/keymetrics/pm2-io-apm-go/structures"
 
 type PayLoad struct {
 	At         int64              `json:"at"`

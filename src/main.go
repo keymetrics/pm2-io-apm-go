@@ -6,12 +6,12 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/f-hj/pm2-io-apm-go/services"
+	"github.com/keymetrics/pm2-io-apm-go/services"
 	"github.com/pkg/errors"
 
-	"github.com/f-hj/pm2-io-apm-go/structures"
+	"github.com/keymetrics/pm2-io-apm-go/structures"
 
-	"github.com/f-hj/pm2-io-apm-go"
+	"github.com/keymetrics/pm2-io-apm-go"
 )
 
 func main() {

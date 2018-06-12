@@ -2,9 +2,8 @@ package features
 
 import (
 	"fmt"
-	"log"
 
-	"github.com/f-hj/pm2-io-apm-go/services"
+	"github.com/keymetrics/pm2-io-apm-go/services"
 	"github.com/pkg/errors"
 )
 
@@ -22,8 +21,6 @@ type stackTracer interface {
 }
 
 func (notifier *Notifier) Error(err error) {
-	log.Println("ERRRRROOOOOOORRRR")
-
 	stack := ""
 	if err, ok := err.(stackTracer); ok {
 		for _, f := range err.StackTrace() {

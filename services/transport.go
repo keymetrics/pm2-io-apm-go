@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/f-hj/pm2-io-apm-go/structures"
+	"github.com/keymetrics/pm2-io-apm-go/structures"
 	"github.com/gorilla/websocket"
 )
 

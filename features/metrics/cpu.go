@@ -9,7 +9,6 @@ import (
 
 var lastCpuTotal float64 = 0
 
-// Create metric here
 func CPUPercent() (float64, error) {
 	p, err := process.NewProcess(int32(os.Getpid()))
 	if err != nil {

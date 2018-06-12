@@ -3,7 +3,7 @@ package metrics_test
 import (
 	"testing"
 
-	"github.com/f-hj/pm2-io-apm-go/features/metrics"
+	"github.com/keymetrics/pm2-io-apm-go/features/metrics"
 )
 
 func TestCpu(t *testing.T) {

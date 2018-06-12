@@ -3,8 +3,8 @@ package services_test
 import (
 	"testing"
 
-	"github.com/f-hj/pm2-io-apm-go/services"
-	"github.com/f-hj/pm2-io-apm-go/structures"
+	"github.com/keymetrics/pm2-io-apm-go/services"
+	"github.com/keymetrics/pm2-io-apm-go/structures"
 )
 
 func TestAction(t *testing.T) {

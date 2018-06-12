@@ -1,6 +1,6 @@
 workspace:
   base: /go
-  path: src/github.com/f-hj/pm2-io-apm-go
+  path: src/github.com/keymetrics/pm2-io-apm-go
 
 pipeline:
   tests:

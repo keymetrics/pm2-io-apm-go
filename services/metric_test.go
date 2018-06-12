@@ -3,7 +3,7 @@ package services_test
 import (
 	"testing"
 
-	"github.com/f-hj/pm2-io-apm-go/services"
+	"github.com/keymetrics/pm2-io-apm-go/services"
 )
 
 func TestMetrics(t *testing.T) {
