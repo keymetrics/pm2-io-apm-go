@@ -16,20 +16,23 @@ import (
 
 func main() {
 	test := float64(0)
-	Pm2Io := pm2_io_apm_go.Pm2Io{}
+	Pm2Io := pm2io.Pm2Io{}
 	Pm2Io.Start("9nc25845w31vqeq", "1e34mwmtaid0pr7", "Golang_application")
 
-	metric := structures.Metric{
-		Name:  "test",
+	metric := structures.CreateMetric("test", "metric", "unit")
+	services.AddMetric(&metric)
+
+	nbreq := structures.Metric{
+		Name:  "nbreq",
 		Value: 0,
 	}
-	services.AddMetric(&metric)
+	services.AddMetric(&nbreq)
 
 	services.AddAction(&structures.Action{
 		ActionName: "Test",
 		Callback: func() string {
 			log.Println("Action TEST")
-			return "Test"
+			return "I am the test answer"
 		},
 	})
 
@@ -37,6 +40,7 @@ func main() {
 		for i := 0; i < 1000; i++ {
 			fmt.Fprintf(w, "Hello")
 		}
+		nbreq.Value++
 	})
 
 	go func() {
@@ -48,7 +52,7 @@ func main() {
 			metric.Set(test)
 			cause := errors.New("Niaha")
 			err := errors.WithStack(cause)
-			Pm2Io.NotifyError(err)
+			Pm2Io.Notifier.Error(err)
 		}
 	}()
 
@@ -57,7 +61,18 @@ func main() {
 		log.Println("created log ticker")
 		for {
 			<-ticker.C
-			//Pm2Io.SendLog("I love logging things")
+			Pm2Io.Notifier.Log("I love logging things")
+		}
+	}()
+
+	go func() {
+		ticker := time.NewTicker(6 * time.Second)
+		log.Println("created log ticker")
+		for {
+			<-ticker.C
+			cause := errors.New("Fatal panic error")
+			err := errors.WithStack(cause)
+			Pm2Io.Panic(err)
 		}
 	}()
 

@@ -1,11 +1,6 @@
-package pm2_io_apm_go
+package pm2io
 
 // Sending
-
-type Error struct {
-	Message string `json:"message"`
-	Stack   string `json:"stack"`
-}
 
 // Receiving
 type MessageResponse struct {
