@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/pbnjay/memory"
+	"github.com/shirou/gopsutil/cpu"
+	"github.com/shirou/gopsutil/load"
 	"github.com/shirou/gopsutil/process"
 )
 
@@ -37,6 +39,22 @@ func CPUPercent() (float64, error) {
 	lastCpuTotal = cput.Total()
 
 	return val, nil
+}
+
+func CPUName() string {
+	infos, err := cpu.Info()
+	if err != nil {
+		return ""
+	}
+	return infos[0].ModelName
+}
+
+func CPULoad() []float64 {
+	avg, err := load.Avg()
+	if err != nil {
+		return []float64{}
+	}
+	return []float64{avg.Load1, avg.Load5, avg.Load15}
 }
 
 func TotalMem() uint64 {

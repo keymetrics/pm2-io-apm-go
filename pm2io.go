@@ -117,7 +117,7 @@ func (pm2io *Pm2Io) SendStatus() {
 	pm2io.transporter.Send("status", structures.Status{
 		Process: kmProc,
 		Server: structures.Server{
-			Loadavg:     []float64{0, 0, 0},
+			Loadavg:     metrics.CPULoad(),
 			TotalMem:    metrics.TotalMem(),
 			Hostname:    hostname,
 			Uptime:      (time.Now().UnixNano()-pm2io.startTime.UnixNano())/int64(time.Millisecond) + 600000,
@@ -126,6 +126,7 @@ func (pm2io *Pm2Io) SendStatus() {
 			Interaction: true,
 			CPU: structures.CPU{
 				Number: runtime.NumCPU(),
+				Info:   metrics.CPUName(),
 			},
 			NodeVersion: runtime.Version(),
 		},
