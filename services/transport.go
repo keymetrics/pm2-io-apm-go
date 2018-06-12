@@ -9,8 +9,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/keymetrics/pm2-io-apm-go/structures"
 	"github.com/gorilla/websocket"
+	"github.com/keymetrics/pm2-io-apm-go/features/metrics"
+	"github.com/keymetrics/pm2-io-apm-go/structures"
 )
 
 var tempName = ""
@@ -38,7 +39,6 @@ func (transporter *Transporter) Connect(publicKey string, privateKey string, nam
 	headers.Add("X-PROTOCOL-VERSION", "1")
 
 	c, _, err := websocket.DefaultDialer.Dial(u.String(), headers)
-	log.Println("dial")
 	if err != nil {
 		log.Fatal("dial:", err)
 	}
@@ -48,7 +48,6 @@ func (transporter *Transporter) Connect(publicKey string, privateKey string, nam
 
 	go func() {
 		ticker := time.NewTicker(5 * time.Second)
-		log.Println("created ping ticker")
 		for {
 			<-ticker.C
 			transporter.mu.Lock()
@@ -90,11 +89,16 @@ func (transporter *Transporter) MessagesHandler() {
 
 		} else if dat["channel"] == "trigger:pm2:action" {
 			payload := dat["payload"].(map[string]interface{})
-			name := payload["action_name"]
+			name := payload["method_name"]
 			switch name {
 			case "startLogging":
-				transporter.Send("trigger:pm2:result", map[string]interface{}{
-					"success": true,
+				transporter.SendJson(map[string]interface{}{
+					"channel": "trigger:pm2:result",
+					"payload": map[string]interface{}{
+						"ret": map[string]interface{}{
+							"err": nil,
+						},
+					},
 				})
 				break
 			}
@@ -112,8 +116,6 @@ func (transporter *Transporter) SendJson(msg interface{}) {
 
 	transporter.mu.Lock()
 	defer transporter.mu.Unlock()
-
-	log.Println(string(b))
 
 	transporter.ws.WriteMessage(websocket.TextMessage, b)
 }
@@ -133,6 +135,7 @@ func (transporter *Transporter) Send(channel string, data interface{}) {
 			ServerName: tempName,
 			Protected:  false,
 			RevCon:     true,
+			InternalIP: metrics.LocalIP(),
 		},
 	})
 }

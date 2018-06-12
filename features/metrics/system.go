@@ -1,9 +1,11 @@
 package metrics
 
 import (
+	"net"
 	"os"
 	"time"
 
+	"github.com/pbnjay/memory"
 	"github.com/shirou/gopsutil/process"
 )
 
@@ -35,4 +37,24 @@ func CPUPercent() (float64, error) {
 	lastCpuTotal = cput.Total()
 
 	return val, nil
+}
+
+func TotalMem() uint64 {
+	return memory.TotalMemory()
+}
+
+func LocalIP() string {
+	addrs, err := net.InterfaceAddrs()
+	if err != nil {
+		return ""
+	}
+	for _, address := range addrs {
+		// check the address type and if it is not a loopback the display it
+		if ipnet, ok := address.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
+			if ipnet.IP.To16() != nil {
+				return ipnet.IP.String()
+			}
+		}
+	}
+	return ""
 }

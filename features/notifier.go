@@ -36,5 +36,5 @@ func (notifier *Notifier) Error(err error) {
 }
 
 func (notifier *Notifier) Log(log string) {
-	notifier.Transporter.Send("log", log)
+	notifier.Transporter.Send("logs", log)
 }

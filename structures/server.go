@@ -2,8 +2,8 @@ package structures
 
 type Server struct {
 	Loadavg     []float64 `json:"loadavg"`
-	TotalMem    int64     `json:"total_mem"`
-	FreeMem     int64     `json:"free_mem"`
+	TotalMem    uint64    `json:"total_mem,omitempty"`
+	FreeMem     int64     `json:"free_mem,omitempty"`
 	CPU         CPU       `json:"cpu"`
 	Hostname    string    `json:"hostname"`
 	Uptime      int64     `json:"uptime"`
