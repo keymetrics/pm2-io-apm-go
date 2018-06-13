@@ -16,7 +16,8 @@ import (
 var version = "3.0.0-go"
 
 type Pm2Io struct {
-	Name        string
+	Config Config
+
 	Notifier    *features.Notifier
 	transporter *services.Transporter
 
@@ -24,20 +25,26 @@ type Pm2Io struct {
 	lastCpuTotal float64
 }
 
+type Config struct {
+	PublicKey  string
+	PrivateKey string
+	Name       string
+	Server     string
+}
+
 func (pm2io *Pm2Io) init() {
 }
 
-func (pm2io *Pm2Io) Start(publicKey string, privateKey string, name string) {
-	pm2io.Name = name
+func (pm2io *Pm2Io) Start() {
 	pm2io.transporter = &services.Transporter{}
 	pm2io.Notifier = &features.Notifier{
 		Transporter: pm2io.transporter,
 	}
 	services.AddMetric(metrics.GoRoutines())
 	services.AddMetric(metrics.CGoCalls())
-	pm2io.transporter.Connect(publicKey, privateKey, name, version)
+	pm2io.transporter.Connect(pm2io.Config.PublicKey, pm2io.Config.PrivateKey, pm2io.Config.Server, pm2io.Config.Name, version)
 
-	/*services.AddAction(&structures.Action{
+	services.AddAction(&structures.Action{
 		ActionName: "km:heapdump",
 		ActionType: "internal",
 		Callback: func() string {
@@ -46,7 +53,7 @@ func (pm2io *Pm2Io) Start(publicKey string, privateKey string, name string) {
 		},
 	})
 	services.AddAction(&structures.Action{
-		ActionName: "km:cpuprofiling:start",
+		ActionName: "km:cpu:profiling:start",
 		ActionType: "internal",
 		Callback: func() string {
 			log.Println("CPUUUUUUUU PROFIIIIIIIIILING start")
@@ -54,13 +61,13 @@ func (pm2io *Pm2Io) Start(publicKey string, privateKey string, name string) {
 		},
 	})
 	services.AddAction(&structures.Action{
-		ActionName: "km:cpuprofiling:stop",
+		ActionName: "km:cpu:profiling:stop",
 		ActionType: "internal",
 		Callback: func() string {
 			log.Println("CPUUUUUUUU PROFIIIIIIIIILING stop")
 			return ""
 		},
-	})*/
+	})
 
 	pm2io.startTime = time.Now()
 
@@ -84,8 +91,8 @@ func (pm2io *Pm2Io) SendStatus() {
 	kmProc := []structures.Process{}
 
 	options := structures.Options{
-		HeapDump:     false,
-		Profiling:    false,
+		HeapDump:     true,
+		Profiling:    true,
 		CustomProbes: true,
 		Error:        true,
 		Errors:       true,
@@ -93,7 +100,7 @@ func (pm2io *Pm2Io) SendStatus() {
 
 	kmProc = append(kmProc, structures.Process{
 		Pid:         p.Pid,
-		Name:        pm2io.Name,
+		Name:        pm2io.Config.Name,
 		Interpreter: "golang",
 		RestartTime: 0,
 		CreatedAt:   pm2io.startTime.UnixNano() / int64(time.Millisecond),
@@ -112,7 +119,7 @@ func (pm2io *Pm2Io) SendStatus() {
 
 	hostname, err := os.Hostname()
 	if err != nil {
-		hostname = pm2io.Name
+		hostname = pm2io.Config.Name
 	}
 	pm2io.transporter.Send("status", structures.Status{
 		Process: kmProc,

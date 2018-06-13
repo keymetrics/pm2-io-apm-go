@@ -26,8 +26,8 @@ type Message struct {
 	Channel string      `json:"channel"`
 }
 
-func (transporter *Transporter) Connect(publicKey string, privateKey string, name string, version string) {
-	u := url.URL{Scheme: "wss", Host: "omicron.keymetrics.io", Path: "/interaction/public"}
+func (transporter *Transporter) Connect(publicKey string, privateKey string, server string, name string, version string) {
+	u := url.URL{Scheme: "wss", Host: server, Path: "/interaction/public"}
 
 	tempName = name
 
@@ -64,6 +64,8 @@ func (transporter *Transporter) MessagesHandler() {
 			log.Println("read:", err)
 			return
 		}
+
+		log.Println(string(message))
 
 		var dat map[string]interface{}
 

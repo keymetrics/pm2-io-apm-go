@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/keymetrics/pm2-io-apm-go/services"
-	"github.com/pkg/errors"
 
 	"github.com/keymetrics/pm2-io-apm-go/structures"
 
@@ -17,9 +16,15 @@ import (
 )
 
 func main() {
-	test := float64(0)
-	Pm2Io := pm2io.Pm2Io{}
-	Pm2Io.Start("9nc25845w31vqeq", "1e34mwmtaid0pr7", "Golang_application")
+	Pm2Io := pm2io.Pm2Io{
+		Config: pm2io.Config{
+			PublicKey:  "9nc25845w31vqeq",
+			PrivateKey: "1e34mwmtaid0pr7",
+			Name:       "Golang App",
+			Server:     "omicron.keymetrics.io",
+		},
+	}
+	Pm2Io.Start()
 
 	metric := structures.CreateMetric("test", "metric", "unit")
 	services.AddMetric(&metric)
@@ -39,6 +44,10 @@ func main() {
 	})
 
 	services.AddAction(&structures.Action{
+		ActionName: "Tric",
+	})
+
+	services.AddAction(&structures.Action{
 		ActionName: "Get env",
 		Callback: func() string {
 			return strings.Join(os.Environ(), "\n")
@@ -52,7 +61,7 @@ func main() {
 		nbreq.Value++
 	})
 
-	go func() {
+	/*go func() {
 		ticker := time.NewTicker(2 * time.Second)
 		log.Println("created 2s ticker")
 		for {
@@ -63,7 +72,7 @@ func main() {
 			err := errors.WithStack(cause)
 			Pm2Io.Notifier.Error(err)
 		}
-	}()
+	}()*/
 
 	go func() {
 		ticker := time.NewTicker(4 * time.Second)
