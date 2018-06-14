@@ -143,11 +143,11 @@ func (transporter *Transporter) Send(channel string, data interface{}) {
 			Process: structures.Process{
 				PmID:   0,
 				Name:   transporter.Config.Name,
-				Server: transporter.Hostname,
+				Server: transporter.ServerName,
 			},
 			Data:       data,
 			Active:     true,
-			ServerName: transporter.Hostname,
+			ServerName: transporter.ServerName,
 			Protected:  false,
 			RevCon:     true,
 			InternalIP: metrics.LocalIP(),
