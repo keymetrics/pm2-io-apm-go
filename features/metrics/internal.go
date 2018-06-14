@@ -7,19 +7,19 @@ import (
 )
 
 func GoRoutines() *structures.Metric {
-	return &structures.Metric{
-		Name: "GoRoutines",
-		Function: func() float64 {
-			return float64(runtime.NumGoroutine())
-		},
-	}
+	metric := structures.CreateFuncMetric("GoRoutines", "metric", "routines", func() float64 {
+		return float64(runtime.NumGoroutine())
+	})
+	return &metric
 }
 
-func CGoCalls() *structures.Metric {
-	return &structures.Metric{
-		Name: "CGoCalls",
-		Function: func() float64 {
-			return float64(runtime.NumCgoCall())
-		},
-	}
+func CgoCalls() *structures.Metric {
+	last := runtime.NumCgoCall()
+	metric := structures.CreateFuncMetric("CgoCalls/sec", "metric", "calls/sec", func() float64 {
+		calls := runtime.NumCgoCall()
+		v := calls - last
+		last = calls
+		return float64(v)
+	})
+	return &metric
 }

@@ -12,7 +12,7 @@ type Process struct {
 	PmUptime    int64              `json:"pm_uptime,omitempty"`
 	Status      string             `json:"status"`
 	PmID        int                `json:"pm_id"`
-	CPU         int                `json:"cpu"`
+	CPU         float64            `json:"cpu"`
 	Rev         string             `json:"rev"`
 	Memory      uint64             `json:"memory"`
 	NodeEnv     string             `json:"node_env,omitempty"`

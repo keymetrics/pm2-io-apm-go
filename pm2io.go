@@ -41,7 +41,7 @@ func (pm2io *Pm2Io) Start() {
 		Transporter: pm2io.transporter,
 	}
 	services.AddMetric(metrics.GoRoutines())
-	services.AddMetric(metrics.CGoCalls())
+	services.AddMetric(metrics.CgoCalls())
 	pm2io.transporter.Connect(pm2io.Config.PublicKey, pm2io.Config.PrivateKey, pm2io.Config.Server, pm2io.Config.Name, version)
 
 	services.AddAction(&structures.Action{
@@ -109,7 +109,7 @@ func (pm2io *Pm2Io) SendStatus() {
 		PmUptime:    pm2io.startTime.UnixNano() / int64(time.Millisecond),
 		Status:      "online",
 		PmID:        0,
-		CPU:         int(cp),
+		CPU:         cp,
 		Memory:      m.Alloc,
 		NodeEnv:     "production",
 		AxmActions:  services.Actions,

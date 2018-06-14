@@ -61,25 +61,24 @@ func main() {
 		nbreq.Value++
 	})
 
-	/*go func() {
+	go func() {
 		ticker := time.NewTicker(2 * time.Second)
 		log.Println("created 2s ticker")
 		for {
 			<-ticker.C
-			test++
-			metric.Set(test)
-			cause := errors.New("Niaha")
-			err := errors.WithStack(cause)
-			Pm2Io.Notifier.Error(err)
+			metric.Value++
+			//cause := errors.New("Niaha")
+			//err := errors.WithStack(cause)
+			//Pm2Io.Notifier.Error(err)
 		}
-	}()*/
+	}()
 
 	go func() {
 		ticker := time.NewTicker(4 * time.Second)
 		log.Println("created log ticker")
 		for {
 			<-ticker.C
-			Pm2Io.Notifier.Log("I love logging things")
+			Pm2Io.Notifier.Log("I love logging things\n")
 		}
 	}()
 

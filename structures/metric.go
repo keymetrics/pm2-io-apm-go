@@ -8,6 +8,8 @@ type Metric struct {
 	Historic bool    `json:"historic"`
 	Unit     string  `json:"unit"`
 
+	Aggregation string `json:"agg_type"`
+
 	Function func() float64 `json:"-"`
 }
 
@@ -22,13 +24,28 @@ func (metric *Metric) Set(value float64) {
 	metric.Value = value
 }
 
+var defaultAggregation = "avg"
+
 func CreateMetric(name string, category string, unit string) Metric {
 	return Metric{
-		Name:     name,
-		Category: category,
-		Unit:     unit,
-		Value:    0,
+		Name:        name,
+		Category:    category,
+		Unit:        unit,
+		Value:       0,
+		Aggregation: defaultAggregation,
 
 		Historic: true,
+	}
+}
+
+func CreateFuncMetric(name string, category string, unit string, cb func() float64) Metric {
+	return Metric{
+		Name:        name,
+		Category:    category,
+		Unit:        unit,
+		Aggregation: defaultAggregation,
+
+		Historic: true,
+		Function: cb,
 	}
 }
