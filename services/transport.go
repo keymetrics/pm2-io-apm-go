@@ -14,9 +14,12 @@ import (
 	"github.com/keymetrics/pm2-io-apm-go/structures"
 )
 
-var tempName = ""
-
 type Transporter struct {
+	Config     *structures.Config
+	Version    string
+	Hostname   string
+	ServerName string
+
 	ws *websocket.Conn
 	mu sync.Mutex
 }
@@ -26,22 +29,26 @@ type Message struct {
 	Channel string      `json:"channel"`
 }
 
-func (transporter *Transporter) Connect(publicKey string, privateKey string, server string, name string, version string) {
-	u := url.URL{Scheme: "wss", Host: server, Path: "/interaction/public"}
+func (transporter *Transporter) Connect() {
 
-	tempName = name
+	u := url.URL{Scheme: "wss", Host: transporter.Config.Server, Path: "/interaction/public"}
 
 	headers := http.Header{}
-	headers.Add("X-KM-PUBLIC", publicKey)
-	headers.Add("X-KM-SECRET", privateKey)
-	headers.Add("X-KM-SERVER", name)
-	headers.Add("X-PM2-VERSION", version)
+	headers.Add("X-KM-PUBLIC", transporter.Config.PublicKey)
+	headers.Add("X-KM-SECRET", transporter.Config.PrivateKey)
+	headers.Add("X-KM-SERVER", transporter.ServerName)
+	headers.Add("X-PM2-VERSION", transporter.Version)
 	headers.Add("X-PROTOCOL-VERSION", "1")
 
 	c, _, err := websocket.DefaultDialer.Dial(u.String(), headers)
 	if err != nil {
-		log.Fatal("dial:", err)
+		log.Println("dial:", err)
+
+		transporter.CloseAndReconnect()
+		return
 	}
+
+	log.Println("connected")
 
 	transporter.ws = c
 	go transporter.MessagesHandler()
@@ -52,6 +59,11 @@ func (transporter *Transporter) Connect(publicKey string, privateKey string, ser
 			<-ticker.C
 			transporter.mu.Lock()
 			transporter.ws.WriteMessage(websocket.PingMessage, []byte{})
+			if err != nil {
+				log.Println("disconnected")
+				transporter.CloseAndReconnect()
+				return
+			}
 			transporter.mu.Unlock()
 		}
 	}()
@@ -61,7 +73,8 @@ func (transporter *Transporter) MessagesHandler() {
 	for {
 		_, message, err := transporter.ws.ReadMessage()
 		if err != nil {
-			log.Println("read:", err)
+			log.Println("disconnected")
+			transporter.CloseAndReconnect()
 			return
 		}
 
@@ -129,15 +142,24 @@ func (transporter *Transporter) Send(channel string, data interface{}) {
 			At: time.Now().UnixNano() / int64(time.Millisecond),
 			Process: structures.Process{
 				PmID:   0,
-				Name:   tempName,
-				Server: tempName,
+				Name:   transporter.Config.Name,
+				Server: transporter.Hostname,
 			},
 			Data:       data,
 			Active:     true,
-			ServerName: tempName,
+			ServerName: transporter.Hostname,
 			Protected:  false,
 			RevCon:     true,
 			InternalIP: metrics.LocalIP(),
 		},
 	})
+}
+
+func (transporter *Transporter) CloseAndReconnect() {
+	log.Println("CloseAndReconnect")
+	transporter.mu.Lock()
+	defer transporter.mu.Unlock()
+
+	transporter.ws.Close()
+	transporter.Connect()
 }

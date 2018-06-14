@@ -1,6 +1,8 @@
 package pm2io
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"log"
 	"os"
 	"runtime"
@@ -16,33 +18,47 @@ import (
 var version = "3.0.0-go"
 
 type Pm2Io struct {
-	Config Config
+	Config *structures.Config
 
 	Notifier    *features.Notifier
 	transporter *services.Transporter
 
+	serverName   string
+	hostname     string
 	startTime    time.Time
 	lastCpuTotal float64
-}
-
-type Config struct {
-	PublicKey  string
-	PrivateKey string
-	Name       string
-	Server     string
 }
 
 func (pm2io *Pm2Io) init() {
 }
 
 func (pm2io *Pm2Io) Start() {
-	pm2io.transporter = &services.Transporter{}
+	realHostname, err := os.Hostname()
+	pm2io.hostname = realHostname
+	serverName := ""
+	if err != nil {
+		serverName = pm2io.Config.Name
+	}
+	random, err := randomHex(5)
+	if err == nil {
+		serverName = realHostname + "_" + random
+	}
+
+	pm2io.serverName = serverName
+
+	pm2io.transporter = &services.Transporter{
+		Config:     pm2io.Config,
+		Version:    version,
+		Hostname:   realHostname,
+		ServerName: pm2io.serverName,
+	}
 	pm2io.Notifier = &features.Notifier{
 		Transporter: pm2io.transporter,
 	}
 	services.AddMetric(metrics.GoRoutines())
 	services.AddMetric(metrics.CgoCalls())
-	pm2io.transporter.Connect(pm2io.Config.PublicKey, pm2io.Config.PrivateKey, pm2io.Config.Server, pm2io.Config.Name, version)
+
+	pm2io.transporter.Connect()
 
 	services.AddAction(&structures.Action{
 		ActionName: "km:heapdump",
@@ -91,8 +107,8 @@ func (pm2io *Pm2Io) SendStatus() {
 	kmProc := []structures.Process{}
 
 	options := structures.Options{
-		HeapDump:     true,
-		Profiling:    true,
+		HeapDump:     false,
+		Profiling:    false,
 		CustomProbes: true,
 		Error:        true,
 		Errors:       true,
@@ -117,16 +133,12 @@ func (pm2io *Pm2Io) SendStatus() {
 		AxmOptions:  options,
 	})
 
-	hostname, err := os.Hostname()
-	if err != nil {
-		hostname = pm2io.Config.Name
-	}
 	pm2io.transporter.Send("status", structures.Status{
 		Process: kmProc,
 		Server: structures.Server{
 			Loadavg:     metrics.CPULoad(),
 			TotalMem:    metrics.TotalMem(),
-			Hostname:    hostname,
+			Hostname:    pm2io.hostname,
 			Uptime:      (time.Now().UnixNano()-pm2io.startTime.UnixNano())/int64(time.Millisecond) + 600000,
 			Pm2Version:  version,
 			Type:        "golang",
@@ -143,4 +155,13 @@ func (pm2io *Pm2Io) SendStatus() {
 func (pm2io *Pm2Io) Panic(err error) {
 	pm2io.Notifier.Error(err)
 	panic(err)
+}
+
+func randomHex(n int) (string, error) {
+	bytes := make([]byte, n)
+	if _, err := rand.Read(bytes); err != nil {
+		log.Println(err)
+		return "", err
+	}
+	return hex.EncodeToString(bytes), nil
 }

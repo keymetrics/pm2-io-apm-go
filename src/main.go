@@ -17,7 +17,7 @@ import (
 
 func main() {
 	Pm2Io := pm2io.Pm2Io{
-		Config: pm2io.Config{
+		Config: &structures.Config{
 			PublicKey:  "9nc25845w31vqeq",
 			PrivateKey: "1e34mwmtaid0pr7",
 			Name:       "Golang App",
