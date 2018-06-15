@@ -21,7 +21,6 @@ func main() {
 			PublicKey:  "9nc25845w31vqeq",
 			PrivateKey: "1e34mwmtaid0pr7",
 			Name:       "Golang App",
-			Server:     "omicron.keymetrics.io",
 		},
 	}
 	Pm2Io.Start()
@@ -102,5 +101,5 @@ func main() {
 		}
 	}()*/
 
-	http.ListenAndServe(":8080", nil)
+	http.ListenAndServe(":8081", nil)
 }

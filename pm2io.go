@@ -15,7 +15,7 @@ import (
 	"github.com/shirou/gopsutil/process"
 )
 
-var version = "3.0.0-go"
+var version = "0.0.1-go"
 
 type Pm2Io struct {
 	Config *structures.Config
@@ -140,7 +140,7 @@ func (pm2io *Pm2Io) SendStatus() {
 			Hostname:    pm2io.hostname,
 			Uptime:      (time.Now().UnixNano()-pm2io.startTime.UnixNano())/int64(time.Millisecond) + 600000,
 			Pm2Version:  version,
-			Type:        "golang",
+			Type:        runtime.GOOS,
 			Interaction: true,
 			CPU: structures.CPU{
 				Number: runtime.NumCPU(),

@@ -12,3 +12,25 @@ type PayLoad struct {
 	Protected  bool               `json:"protected"`
 	RevCon     bool               `json:"rev_con"`
 }
+
+type Verify struct {
+	PublicId  string     `json:"public_id"`
+	PrivateId string     `json:"private_id"`
+	Data      VerifyData `json:"data"`
+}
+
+type VerifyData struct {
+	MachineName string `json:"MACHINE_NAME"`
+	Cpus        int    `json:"CPUS"`   //nb thread
+	Memory      uint64 `json:"MEMORY"` //bytes
+	Pm2Version  string `json:"PM2_VERSION"`
+	Hostname    string `json:"HOSTNAME"`
+}
+
+type VerifyResponse struct {
+	Endpoints Endpoints `json:"endpoints"`
+}
+
+type Endpoints struct {
+	WS string `json:"ws"`
+}
