@@ -20,8 +20,9 @@ type Transporter struct {
 	Hostname   string
 	ServerName string
 
-	ws *websocket.Conn
-	mu sync.Mutex
+	ws         *websocket.Conn
+	mu         sync.Mutex
+	isHandling bool
 }
 
 type Message struct {
@@ -29,8 +30,18 @@ type Message struct {
 	Channel string      `json:"channel"`
 }
 
-func (transporter *Transporter) Connect() {
+func NewTransporter(config *structures.Config, version string, hostname string, serverName string) *Transporter {
+	return &Transporter{
+		Config:     config,
+		Version:    version,
+		Hostname:   hostname,
+		ServerName: serverName,
 
+		isHandling: false,
+	}
+}
+
+func (transporter *Transporter) Connect() {
 	u := url.URL{Scheme: "wss", Host: transporter.Config.Server, Path: "/interaction/public"}
 
 	headers := http.Header{}
@@ -51,6 +62,15 @@ func (transporter *Transporter) Connect() {
 	log.Println("connected")
 
 	transporter.ws = c
+
+	if !transporter.isHandling {
+		transporter.SetHandlers()
+	}
+}
+
+func (transporter *Transporter) SetHandlers() {
+	transporter.isHandling = true
+
 	go transporter.MessagesHandler()
 
 	go func() {
@@ -58,13 +78,13 @@ func (transporter *Transporter) Connect() {
 		for {
 			<-ticker.C
 			transporter.mu.Lock()
-			transporter.ws.WriteMessage(websocket.PingMessage, []byte{})
-			if err != nil {
-				log.Println("disconnected")
+			errPinger := transporter.ws.WriteMessage(websocket.PingMessage, []byte{})
+			transporter.mu.Unlock()
+			if errPinger != nil {
+				log.Println("disconnected pinger:", errPinger)
 				transporter.CloseAndReconnect()
 				return
 			}
-			transporter.mu.Unlock()
 		}
 	}()
 }
@@ -73,7 +93,7 @@ func (transporter *Transporter) MessagesHandler() {
 	for {
 		_, message, err := transporter.ws.ReadMessage()
 		if err != nil {
-			log.Println("disconnected")
+			log.Println("disconnected msgHandler:", err)
 			transporter.CloseAndReconnect()
 			return
 		}
@@ -132,10 +152,12 @@ func (transporter *Transporter) SendJson(msg interface{}) {
 	transporter.mu.Lock()
 	defer transporter.mu.Unlock()
 
+	log.Println("sent")
 	transporter.ws.WriteMessage(websocket.TextMessage, b)
 }
 
 func (transporter *Transporter) Send(channel string, data interface{}) {
+	log.Println("sending:", channel)
 	transporter.SendJson(Message{
 		Channel: channel,
 		Payload: PayLoad{
@@ -157,9 +179,8 @@ func (transporter *Transporter) Send(channel string, data interface{}) {
 
 func (transporter *Transporter) CloseAndReconnect() {
 	log.Println("CloseAndReconnect")
-	transporter.mu.Lock()
-	defer transporter.mu.Unlock()
 
+	log.Println("closing...")
 	transporter.ws.Close()
 	transporter.Connect()
 }

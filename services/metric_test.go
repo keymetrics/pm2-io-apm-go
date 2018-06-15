@@ -10,7 +10,7 @@ func TestMetrics(t *testing.T) {
 	t.Run("Generate map", func(t *testing.T) {
 		metrics := services.GetMetricsAsMap()
 		if metrics == nil {
-			t.Fail()
+			t.Fatal("cannot get map")
 		}
 	})
 }

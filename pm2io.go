@@ -46,12 +46,7 @@ func (pm2io *Pm2Io) Start() {
 
 	pm2io.serverName = serverName
 
-	pm2io.transporter = &services.Transporter{
-		Config:     pm2io.Config,
-		Version:    version,
-		Hostname:   realHostname,
-		ServerName: pm2io.serverName,
-	}
+	pm2io.transporter = services.NewTransporter(pm2io.Config, version, realHostname, pm2io.serverName)
 	pm2io.Notifier = &features.Notifier{
 		Transporter: pm2io.transporter,
 	}
@@ -95,6 +90,10 @@ func (pm2io *Pm2Io) Start() {
 			pm2io.SendStatus()
 		}
 	}()
+}
+
+func (pm2io *Pm2Io) RestartTransporter() {
+	pm2io.transporter.CloseAndReconnect()
 }
 
 func (pm2io *Pm2Io) SendStatus() {
