@@ -3,7 +3,6 @@ package services
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -22,11 +21,12 @@ type Transporter struct {
 	Hostname   string
 	ServerName string
 
-	ws         *websocket.Conn
-	mu         sync.Mutex
-	isHandling bool
-	isClosing  bool
-	node       *string
+	ws          *websocket.Conn
+	mu          sync.Mutex
+	isConnected bool
+	isHandling  bool
+	isClosing   bool
+	node        *string
 }
 
 type Message struct {
@@ -41,8 +41,9 @@ func NewTransporter(config *structures.Config, version string, hostname string, 
 		Hostname:   hostname,
 		ServerName: serverName,
 
-		isHandling: false,
-		isClosing:  false,
+		isHandling:  false,
+		isClosing:   false,
+		isConnected: false,
 	}
 }
 
@@ -80,6 +81,14 @@ func (transporter *Transporter) Connect() {
 	if transporter.node == nil {
 		transporter.node = transporter.GetServer()
 	}
+	if transporter.node == nil {
+		go func() {
+			time.Sleep(10 * time.Second)
+			transporter.Connect()
+		}()
+		return
+	}
+
 	headers := http.Header{}
 	headers.Add("X-KM-PUBLIC", transporter.Config.PublicKey)
 	headers.Add("X-KM-SECRET", transporter.Config.PrivateKey)
@@ -89,13 +98,11 @@ func (transporter *Transporter) Connect() {
 
 	c, _, err := websocket.DefaultDialer.Dial(*transporter.node, headers)
 	if err != nil {
-		log.Println("dial:", err)
-
 		transporter.CloseAndReconnect()
 		return
 	}
 
-	log.Println("connected")
+	transporter.isConnected = true
 	transporter.isClosing = false
 
 	transporter.ws = c
@@ -130,7 +137,6 @@ func (transporter *Transporter) SetHandlers() {
 			errPinger := transporter.ws.WriteMessage(websocket.PingMessage, []byte{})
 			transporter.mu.Unlock()
 			if errPinger != nil {
-				log.Println("disconnected pinger:", errPinger)
 				transporter.CloseAndReconnect()
 				return
 			}
@@ -140,17 +146,12 @@ func (transporter *Transporter) SetHandlers() {
 
 func (transporter *Transporter) MessagesHandler() {
 	for {
-		log.Println("loop")
 		_, message, err := transporter.ws.ReadMessage()
-		log.Println("read")
 		if err != nil {
-			log.Println("disconnected msgHandler:", err)
 			transporter.isHandling = false
 			transporter.CloseAndReconnect()
 			return
 		}
-
-		log.Println(string(message))
 
 		var dat map[string]interface{}
 
@@ -198,17 +199,19 @@ func (transporter *Transporter) MessagesHandler() {
 func (transporter *Transporter) SendJson(msg interface{}) {
 	b, err := json.Marshal(msg)
 	if err != nil {
-		fmt.Println("error:", err)
+		return
 	}
 
 	transporter.mu.Lock()
 	defer transporter.mu.Unlock()
 
+	if !transporter.isConnected {
+		return
+	}
 	transporter.ws.WriteMessage(websocket.TextMessage, b)
 }
 
 func (transporter *Transporter) Send(channel string, data interface{}) {
-	log.Println("sending:", channel)
 	transporter.SendJson(Message{
 		Channel: channel,
 		Payload: PayLoad{
@@ -229,14 +232,12 @@ func (transporter *Transporter) Send(channel string, data interface{}) {
 }
 
 func (transporter *Transporter) CloseAndReconnect() {
-	if transporter.isClosing {
+	if transporter.isClosing || !transporter.isConnected {
 		return
-	} else {
-		transporter.isClosing = true
 	}
-	log.Println("CloseAndReconnect")
+	transporter.isClosing = true
+	transporter.isConnected = false
 
-	log.Println("closing...")
 	transporter.ws.Close()
 	transporter.Connect()
 }

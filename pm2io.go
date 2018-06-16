@@ -84,7 +84,6 @@ func (pm2io *Pm2Io) Start() {
 
 	go func() {
 		ticker := time.NewTicker(time.Second)
-		log.Println("created status ticker")
 		for {
 			<-ticker.C
 			pm2io.SendStatus()
@@ -159,7 +158,6 @@ func (pm2io *Pm2Io) Panic(err error) {
 func randomHex(n int) (string, error) {
 	bytes := make([]byte, n)
 	if _, err := rand.Read(bytes); err != nil {
-		log.Println(err)
 		return "", err
 	}
 	return hex.EncodeToString(bytes), nil

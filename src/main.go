@@ -81,14 +81,14 @@ func main() {
 		}
 	}()
 
-	go func() {
+	/*go func() {
 		ticker := time.NewTicker(10 * time.Second)
 		log.Println("created reset ticker")
 		for {
 			<-ticker.C
 			Pm2Io.RestartTransporter()
 		}
-	}()
+	}()*/
 
 	/*go func() {
 		ticker := time.NewTicker(6 * time.Second)
