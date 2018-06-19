@@ -9,7 +9,7 @@ pipeline:
       - go get -t -v
       - go get gopkg.in/h2non/gock.v1
       - go test -v -coverprofile=coverage.txt -covermode=atomic $(go list ./...)
-      - bash <(curl -s https://codecov.io/bash) -t $$codecov_token
+      - bash -c "bash <(curl -s https://codecov.io/bash) -t $$codecov_token"
       - go build
 
   slack:
