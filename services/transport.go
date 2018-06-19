@@ -20,13 +20,14 @@ type Transporter struct {
 	Version    string
 	Hostname   string
 	ServerName string
+	Node       string
 
 	ws          *websocket.Conn
 	mu          sync.Mutex
 	isConnected bool
 	isHandling  bool
 	isClosing   bool
-	node        *string
+	wsNode      *string
 }
 
 type Message struct {
@@ -34,12 +35,13 @@ type Message struct {
 	Channel string      `json:"channel"`
 }
 
-func NewTransporter(config *structures.Config, version string, hostname string, serverName string) *Transporter {
+func NewTransporter(config *structures.Config, version string, hostname string, serverName string, node string) *Transporter {
 	return &Transporter{
 		Config:     config,
 		Version:    version,
 		Hostname:   hostname,
 		ServerName: serverName,
+		Node:       node,
 
 		isHandling:  false,
 		isClosing:   false,
@@ -60,7 +62,7 @@ func (transporter *Transporter) GetServer() *string {
 		},
 	}
 	jsonValue, _ := json.Marshal(verify)
-	res, err := http.Post("https://root.keymetrics.io/api/node/verifyPM2", "application/json", bytes.NewBuffer(jsonValue))
+	res, err := http.Post("https://"+transporter.Node+"/api/node/verifyPM2", "application/json", bytes.NewBuffer(jsonValue))
 	if err != nil {
 		return nil
 	}
@@ -78,10 +80,10 @@ func (transporter *Transporter) GetServer() *string {
 }
 
 func (transporter *Transporter) Connect() {
-	if transporter.node == nil {
-		transporter.node = transporter.GetServer()
+	if transporter.wsNode == nil {
+		transporter.wsNode = transporter.GetServer()
 	}
-	if transporter.node == nil {
+	if transporter.wsNode == nil {
 		go func() {
 			time.Sleep(10 * time.Second)
 			transporter.Connect()
@@ -96,7 +98,7 @@ func (transporter *Transporter) Connect() {
 	headers.Add("X-PM2-VERSION", transporter.Version)
 	headers.Add("X-PROTOCOL-VERSION", "1")
 
-	c, _, err := websocket.DefaultDialer.Dial(*transporter.node, headers)
+	c, _, err := websocket.DefaultDialer.Dial(*transporter.wsNode, headers)
 	if err != nil {
 		transporter.CloseAndReconnect()
 		return
@@ -116,8 +118,8 @@ func (transporter *Transporter) Connect() {
 		for {
 			<-ticker.C
 			srv := transporter.GetServer()
-			if *srv != *transporter.node {
-				transporter.node = srv
+			if *srv != *transporter.wsNode {
+				transporter.wsNode = srv
 				transporter.CloseAndReconnect()
 			}
 		}
@@ -240,4 +242,12 @@ func (transporter *Transporter) CloseAndReconnect() {
 
 	transporter.ws.Close()
 	transporter.Connect()
+}
+
+func (transporter *Transporter) IsConnected() bool {
+	return transporter.isConnected && !transporter.isClosing
+}
+
+func (transporter *Transporter) GetWsNode() *string {
+	return transporter.wsNode
 }

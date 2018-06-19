@@ -46,7 +46,13 @@ func (pm2io *Pm2Io) Start() {
 
 	pm2io.serverName = serverName
 
-	pm2io.transporter = services.NewTransporter(pm2io.Config, version, realHostname, pm2io.serverName)
+	node := pm2io.Config.Node
+	defaultNode := "root.keymetrics.io"
+	if node == nil {
+		node = &defaultNode
+	}
+
+	pm2io.transporter = services.NewTransporter(pm2io.Config, version, realHostname, pm2io.serverName, *node)
 	pm2io.Notifier = &features.Notifier{
 		Transporter: pm2io.transporter,
 	}
