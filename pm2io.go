@@ -23,6 +23,8 @@ type Pm2Io struct {
 	Notifier    *features.Notifier
 	transporter *services.Transporter
 
+	StatusOverrider func() *structures.Status
+
 	serverName   string
 	hostname     string
 	startTime    time.Time
@@ -102,6 +104,10 @@ func (pm2io *Pm2Io) RestartTransporter() {
 }
 
 func (pm2io *Pm2Io) SendStatus() {
+	if pm2io.StatusOverrider != nil {
+		pm2io.transporter.Send("status", pm2io.StatusOverrider())
+		return
+	}
 	p, _ := process.NewProcess(int32(os.Getpid()))
 	cp, _ := metrics.CPUPercent()
 
