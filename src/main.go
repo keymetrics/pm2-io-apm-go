@@ -86,6 +86,7 @@ func main() {
 		log.Println("created reset ticker")
 		for {
 			<-ticker.C
+			log.Println("RestartTransporter")
 			Pm2Io.RestartTransporter()
 		}
 	}()*/

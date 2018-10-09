@@ -38,12 +38,15 @@ func (pm2io *Pm2Io) Start() {
 	realHostname, err := os.Hostname()
 	pm2io.hostname = realHostname
 	serverName := ""
-	if err != nil {
+	if err != nil || pm2io.Config.Name != "" {
 		serverName = pm2io.Config.Name
-	}
-	random, err := randomHex(5)
-	if err == nil {
-		serverName = realHostname + "_" + random
+	} else {
+		random, err := randomHex(5)
+		if err == nil {
+			serverName = realHostname + "_" + random
+		} else {
+			serverName = random
+		}
 	}
 
 	pm2io.serverName = serverName
@@ -58,8 +61,15 @@ func (pm2io *Pm2Io) Start() {
 	pm2io.Notifier = &features.Notifier{
 		Transporter: pm2io.transporter,
 	}
+	metrics.InitMetricsMemStats()
+	services.AttachHandler(metrics.Handler)
 	services.AddMetric(metrics.GoRoutines())
 	services.AddMetric(metrics.CgoCalls())
+	services.AddMetric(metrics.GlobalMetricsMemStats.NumGC)
+	services.AddMetric(metrics.GlobalMetricsMemStats.NumMallocs)
+	services.AddMetric(metrics.GlobalMetricsMemStats.NumFree)
+	services.AddMetric(metrics.GlobalMetricsMemStats.HeapAlloc)
+	services.AddMetric(metrics.GlobalMetricsMemStats.Pause)
 
 	pm2io.transporter.Connect()
 

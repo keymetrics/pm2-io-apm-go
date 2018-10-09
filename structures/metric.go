@@ -43,6 +43,7 @@ func CreateFuncMetric(name string, category string, unit string, cb func() float
 		Name:        name,
 		Category:    category,
 		Unit:        unit,
+		Value:       0,
 		Aggregation: defaultAggregation,
 
 		Historic: true,

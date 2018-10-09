@@ -22,12 +22,15 @@ type Transporter struct {
 	ServerName string
 	Node       string
 
-	ws          *websocket.Conn
-	mu          sync.Mutex
-	isConnected bool
-	isHandling  bool
-	isClosing   bool
-	wsNode      *string
+	ws              *websocket.Conn
+	mu              sync.Mutex
+	isConnected     bool
+	isHandling      bool
+	isConnecting    bool
+	isClosed        bool
+	wsNode          *string
+	heartbeatTicker *time.Ticker // 5 seconds
+	serverTicker    *time.Ticker // 10 minutes
 }
 
 type Message struct {
@@ -43,9 +46,10 @@ func NewTransporter(config *structures.Config, version string, hostname string, 
 		ServerName: serverName,
 		Node:       node,
 
-		isHandling:  false,
-		isClosing:   false,
-		isConnected: false,
+		isHandling:   false,
+		isConnecting: false,
+		isClosed:     false,
+		isConnected:  false,
 	}
 }
 
@@ -100,12 +104,18 @@ func (transporter *Transporter) Connect() {
 
 	c, _, err := websocket.DefaultDialer.Dial(*transporter.wsNode, headers)
 	if err != nil {
+		time.Sleep(2 * time.Second)
+		transporter.isConnecting = false
 		transporter.CloseAndReconnect()
 		return
 	}
+	c.SetCloseHandler(func(code int, text string) error {
+		transporter.isClosed = true
+		return nil
+	})
 
 	transporter.isConnected = true
-	transporter.isClosing = false
+	transporter.isConnecting = false
 
 	transporter.ws = c
 
@@ -114,9 +124,12 @@ func (transporter *Transporter) Connect() {
 	}
 
 	go func() {
-		ticker := time.NewTicker(10 * time.Minute)
+		if transporter.serverTicker != nil {
+			return
+		}
+		transporter.serverTicker = time.NewTicker(10 * time.Minute)
 		for {
-			<-ticker.C
+			<-transporter.serverTicker.C
 			srv := transporter.GetServer()
 			if *srv != *transporter.wsNode {
 				transporter.wsNode = srv
@@ -132,9 +145,12 @@ func (transporter *Transporter) SetHandlers() {
 	go transporter.MessagesHandler()
 
 	go func() {
-		ticker := time.NewTicker(5 * time.Second)
+		if transporter.heartbeatTicker != nil {
+			return
+		}
+		transporter.heartbeatTicker = time.NewTicker(5 * time.Second)
 		for {
-			<-ticker.C
+			<-transporter.heartbeatTicker.C
 			transporter.mu.Lock()
 			errPinger := transporter.ws.WriteMessage(websocket.PingMessage, []byte{})
 			transporter.mu.Unlock()
@@ -210,7 +226,11 @@ func (transporter *Transporter) SendJson(msg interface{}) {
 	if !transporter.isConnected {
 		return
 	}
-	transporter.ws.WriteMessage(websocket.TextMessage, b)
+	transporter.ws.SetWriteDeadline(time.Now().Add(30 * time.Second))
+	err = transporter.ws.WriteMessage(websocket.TextMessage, b)
+	if err != nil {
+		transporter.CloseAndReconnect()
+	}
 }
 
 func (transporter *Transporter) Send(channel string, data interface{}) {
@@ -234,18 +254,20 @@ func (transporter *Transporter) Send(channel string, data interface{}) {
 }
 
 func (transporter *Transporter) CloseAndReconnect() {
-	if transporter.isClosing || !transporter.isConnected {
+	if transporter.isConnecting {
 		return
 	}
-	transporter.isClosing = true
-	transporter.isConnected = false
 
-	transporter.ws.Close()
+	if !transporter.isClosed {
+		transporter.ws.Close()
+	}
+	transporter.isConnected = false
+	transporter.isConnecting = true
 	transporter.Connect()
 }
 
 func (transporter *Transporter) IsConnected() bool {
-	return transporter.isConnected && !transporter.isClosing
+	return transporter.isConnected
 }
 
 func (transporter *Transporter) GetWsNode() *string {
