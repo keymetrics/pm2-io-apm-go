@@ -181,7 +181,7 @@ func (transporter *Transporter) MessagesHandler() {
 			payload := dat["payload"].(map[string]interface{})
 			name := payload["action_name"]
 
-			response := CallAction(name.(string))
+			response := CallAction(name.(string), payload)
 
 			transporter.Send("trigger:action:success", map[string]interface{}{
 				"success":     true,

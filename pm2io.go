@@ -3,9 +3,11 @@ package pm2io
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"io/ioutil"
 	"log"
 	"os"
 	"runtime"
+	"runtime/pprof"
 	"time"
 
 	"github.com/keymetrics/pm2-io-apm-go/features"
@@ -29,6 +31,9 @@ type Pm2Io struct {
 	hostname     string
 	startTime    time.Time
 	lastCpuTotal float64
+
+	cpuProfilePath string
+	memProfilePath string
 }
 
 func (pm2io *Pm2Io) init() {
@@ -76,24 +81,38 @@ func (pm2io *Pm2Io) Start() {
 	services.AddAction(&structures.Action{
 		ActionName: "km:heapdump",
 		ActionType: "internal",
-		Callback: func() string {
-			log.Println("MEMORY PROFIIIIIIIIILING")
+		Callback: func(payload map[string]interface{}) string {
+			f, _ := ioutil.TempFile("/tmp", "heapdump")
+			pprof.WriteHeapProfile(f)
+			r, _ := ioutil.ReadFile(f.Name())
+			pm2io.transporter.Send("profilings", structures.NewProfilingResponse(string(r), "heapdump"))
+			log.Println(payload)
 			return ""
 		},
 	})
 	services.AddAction(&structures.Action{
 		ActionName: "km:cpu:profiling:start",
 		ActionType: "internal",
-		Callback: func() string {
-			log.Println("CPUUUUUUUU PROFIIIIIIIIILING start")
+		Callback: func(payload map[string]interface{}) string {
+			f, _ := ioutil.TempFile("/tmp", "cpuprofile")
+			pm2io.cpuProfilePath = f.Name()
+			pprof.StartCPUProfile(f)
+
+			if payload["opts"] != nil {
+				go func() {
+					timeout := payload["opts"].(map[string]interface{})["timeout"]
+					time.Sleep(time.Duration(timeout.(float64)) * time.Millisecond)
+					pm2io.stopAndSendCpuProfiling()
+				}()
+			}
 			return ""
 		},
 	})
 	services.AddAction(&structures.Action{
 		ActionName: "km:cpu:profiling:stop",
 		ActionType: "internal",
-		Callback: func() string {
-			log.Println("CPUUUUUUUU PROFIIIIIIIIILING stop")
+		Callback: func(payload map[string]interface{}) string {
+			pm2io.stopAndSendCpuProfiling()
 			return ""
 		},
 	})
@@ -107,6 +126,12 @@ func (pm2io *Pm2Io) Start() {
 			pm2io.SendStatus()
 		}
 	}()
+}
+
+func (pm2io *Pm2Io) stopAndSendCpuProfiling() {
+	pprof.StopCPUProfile()
+	r, _ := ioutil.ReadFile(pm2io.cpuProfilePath)
+	pm2io.transporter.Send("profilings", structures.NewProfilingResponse(string(r), "cpuprofile"))
 }
 
 func (pm2io *Pm2Io) RestartTransporter() {
@@ -127,11 +152,12 @@ func (pm2io *Pm2Io) SendStatus() {
 	kmProc := []structures.Process{}
 
 	options := structures.Options{
-		HeapDump:     false,
-		Profiling:    false,
+		HeapDump:     true,
+		Profiling:    true,
 		CustomProbes: true,
 		Error:        true,
 		Errors:       true,
+		PmxVersion:   "2.4.1",
 	}
 
 	kmProc = append(kmProc, structures.Process{

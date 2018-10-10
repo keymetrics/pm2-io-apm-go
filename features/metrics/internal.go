@@ -6,6 +6,7 @@ import (
 	"github.com/keymetrics/pm2-io-apm-go/structures"
 )
 
+// MetricsMemStats is a structure to simplify storage of mem values
 type MetricsMemStats struct {
 	Initied   bool
 	NumGC     *structures.Metric
@@ -23,8 +24,10 @@ type MetricsMemStats struct {
 	LastPause float64
 }
 
+// GlobalMetricsMemStats store current and last mem stats
 var GlobalMetricsMemStats MetricsMemStats
 
+// GoRoutines create a func metric who return number of current GoRoutines
 func GoRoutines() *structures.Metric {
 	metric := structures.CreateFuncMetric("GoRoutines", "metric", "routines", func() float64 {
 		return float64(runtime.NumGoroutine())
@@ -32,6 +35,7 @@ func GoRoutines() *structures.Metric {
 	return &metric
 }
 
+// CgoCalls create a func metric who return number of current C calls of last second
 func CgoCalls() *structures.Metric {
 	last := runtime.NumCgoCall()
 	metric := structures.CreateFuncMetric("CgoCalls/sec", "metric", "calls/sec", func() float64 {
@@ -43,6 +47,7 @@ func CgoCalls() *structures.Metric {
 	return &metric
 }
 
+// InitMetricsMemStats create metrics for MemStats
 func InitMetricsMemStats() {
 	numGC := structures.CreateMetric("GCRuns/sec", "metric", "runs")
 	numMalloc := structures.CreateMetric("mallocs/sec", "metric", "mallocs")
@@ -60,6 +65,7 @@ func InitMetricsMemStats() {
 	}
 }
 
+// Handler write values in MemStats metrics
 func Handler() {
 	var stats runtime.MemStats
 	runtime.ReadMemStats(&stats)

@@ -10,10 +10,10 @@ func AddAction(action *structures.Action) {
 	Actions = append(Actions, action)
 }
 
-func CallAction(name string) *string {
+func CallAction(name string, payload map[string]interface{}) *string {
 	for _, i := range Actions {
 		if i.ActionName == name {
-			response := i.Callback()
+			response := i.Callback(payload)
 			return &response
 		}
 	}

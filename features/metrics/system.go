@@ -11,14 +11,15 @@ import (
 	"github.com/shirou/gopsutil/process"
 )
 
-var lastCpuTotal float64 = 0
+var lastCPUTotal float64
 
+// CPUPercent return current CPU usage
 func CPUPercent() (float64, error) {
 	p, err := process.NewProcess(int32(os.Getpid()))
 	if err != nil {
 		return 0, err
 	}
-	crt_time, err := p.CreateTime()
+	crtTime, err := p.CreateTime()
 	if err != nil {
 		return 0, err
 	}
@@ -28,19 +29,20 @@ func CPUPercent() (float64, error) {
 		return 0, err
 	}
 
-	created := time.Unix(0, crt_time*int64(time.Millisecond))
+	created := time.Unix(0, crtTime*int64(time.Millisecond))
 	totalTime := time.Since(created).Seconds()
 
 	if totalTime <= 0 {
 		return 0, nil
 	}
 
-	val := (cput.Total() - lastCpuTotal) * 100
-	lastCpuTotal = cput.Total()
+	val := (cput.Total() - lastCPUTotal) * 100
+	lastCPUTotal = cput.Total()
 
 	return val, nil
 }
 
+// CPUName return first CPU name
 func CPUName() string {
 	infos, err := cpu.Info()
 	if err != nil {
@@ -49,6 +51,7 @@ func CPUName() string {
 	return infos[0].ModelName
 }
 
+// CPULoad return load1, load5, load15
 func CPULoad() []float64 {
 	avg, err := load.Avg()
 	if err != nil {
@@ -57,10 +60,12 @@ func CPULoad() []float64 {
 	return []float64{avg.Load1, avg.Load5, avg.Load15}
 }
 
+// TotalMem return total memory in bytes
 func TotalMem() uint64 {
 	return memory.TotalMemory()
 }
 
+// LocalIP return ip of first interface
 func LocalIP() string {
 	addrs, err := net.InterfaceAddrs()
 	if err != nil {

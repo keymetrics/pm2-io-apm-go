@@ -36,7 +36,7 @@ func main() {
 
 	services.AddAction(&structures.Action{
 		ActionName: "Test",
-		Callback: func() string {
+		Callback: func(_ map[string]interface{}) string {
 			log.Println("Action TEST")
 			return "I am the test answer"
 		},
@@ -48,7 +48,7 @@ func main() {
 
 	services.AddAction(&structures.Action{
 		ActionName: "Get env",
-		Callback: func() string {
+		Callback: func(_ map[string]interface{}) string {
 			return strings.Join(os.Environ(), "\n")
 		},
 	})
