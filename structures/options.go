@@ -1,5 +1,6 @@
 package structures
 
+// Options like AxmOptions
 type Options struct {
 	DefaultActions bool   `json:"default_actions"`
 	CustomProbes   bool   `json:"custom_probes"`

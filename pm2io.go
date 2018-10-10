@@ -3,11 +3,8 @@ package pm2io
 import (
 	"crypto/rand"
 	"encoding/hex"
-	"io/ioutil"
-	"log"
 	"os"
 	"runtime"
-	"runtime/pprof"
 	"time"
 
 	"github.com/keymetrics/pm2-io-apm-go/features"
@@ -19,6 +16,7 @@ import (
 
 var version = "0.0.1-go"
 
+// Pm2Io to config and access all services
 type Pm2Io struct {
 	Config *structures.Config
 
@@ -27,34 +25,14 @@ type Pm2Io struct {
 
 	StatusOverrider func() *structures.Status
 
-	serverName   string
-	hostname     string
-	startTime    time.Time
-	lastCpuTotal float64
-
-	cpuProfilePath string
-	memProfilePath string
+	serverName string
+	hostname   string
+	startTime  time.Time
 }
 
-func (pm2io *Pm2Io) init() {
-}
-
+// Start and prepare services + profiling
 func (pm2io *Pm2Io) Start() {
-	realHostname, err := os.Hostname()
-	pm2io.hostname = realHostname
-	serverName := ""
-	if err != nil || pm2io.Config.Name != "" {
-		serverName = pm2io.Config.Name
-	} else {
-		random, err := randomHex(5)
-		if err == nil {
-			serverName = realHostname + "_" + random
-		} else {
-			serverName = random
-		}
-	}
-
-	pm2io.serverName = serverName
+	pm2io.serverName, pm2io.hostname = generateServerName(pm2io.Config.Name)
 
 	node := pm2io.Config.Node
 	defaultNode := "root.keymetrics.io"
@@ -62,7 +40,7 @@ func (pm2io *Pm2Io) Start() {
 		node = &defaultNode
 	}
 
-	pm2io.transporter = services.NewTransporter(pm2io.Config, version, realHostname, pm2io.serverName, *node)
+	pm2io.transporter = services.NewTransporter(pm2io.Config, version, pm2io.hostname, pm2io.serverName, *node)
 	pm2io.Notifier = &features.Notifier{
 		Transporter: pm2io.transporter,
 	}
@@ -76,17 +54,15 @@ func (pm2io *Pm2Io) Start() {
 	services.AddMetric(metrics.GlobalMetricsMemStats.HeapAlloc)
 	services.AddMetric(metrics.GlobalMetricsMemStats.Pause)
 
-	pm2io.transporter.Connect()
-
 	services.AddAction(&structures.Action{
 		ActionName: "km:heapdump",
 		ActionType: "internal",
 		Callback: func(payload map[string]interface{}) string {
-			f, _ := ioutil.TempFile("/tmp", "heapdump")
-			pprof.WriteHeapProfile(f)
-			r, _ := ioutil.ReadFile(f.Name())
-			pm2io.transporter.Send("profilings", structures.NewProfilingResponse(string(r), "heapdump"))
-			log.Println(payload)
+			data, err := features.HeapDump()
+			if err != nil {
+				pm2io.Notifier.Error(err)
+			}
+			pm2io.transporter.Send("profilings", structures.NewProfilingResponse(data, "heapdump"))
 			return ""
 		},
 	})
@@ -94,15 +70,20 @@ func (pm2io *Pm2Io) Start() {
 		ActionName: "km:cpu:profiling:start",
 		ActionType: "internal",
 		Callback: func(payload map[string]interface{}) string {
-			f, _ := ioutil.TempFile("/tmp", "cpuprofile")
-			pm2io.cpuProfilePath = f.Name()
-			pprof.StartCPUProfile(f)
+			err := features.StartCPUProfile()
+			if err != nil {
+				pm2io.Notifier.Error(err)
+			}
 
 			if payload["opts"] != nil {
 				go func() {
 					timeout := payload["opts"].(map[string]interface{})["timeout"]
 					time.Sleep(time.Duration(timeout.(float64)) * time.Millisecond)
-					pm2io.stopAndSendCpuProfiling()
+					r, err := features.StopCPUProfile()
+					if err != nil {
+						pm2io.Notifier.Error(err)
+					}
+					pm2io.transporter.Send("profilings", structures.NewProfilingResponse(r, "cpuprofile"))
 				}()
 			}
 			return ""
@@ -112,12 +93,17 @@ func (pm2io *Pm2Io) Start() {
 		ActionName: "km:cpu:profiling:stop",
 		ActionType: "internal",
 		Callback: func(payload map[string]interface{}) string {
-			pm2io.stopAndSendCpuProfiling()
+			r, err := features.StopCPUProfile()
+			if err != nil {
+				pm2io.Notifier.Error(err)
+			}
+			pm2io.transporter.Send("profilings", structures.NewProfilingResponse(r, "cpuprofile"))
 			return ""
 		},
 	})
 
 	pm2io.startTime = time.Now()
+	pm2io.transporter.Connect()
 
 	go func() {
 		ticker := time.NewTicker(time.Second)
@@ -128,23 +114,25 @@ func (pm2io *Pm2Io) Start() {
 	}()
 }
 
-func (pm2io *Pm2Io) stopAndSendCpuProfiling() {
-	pprof.StopCPUProfile()
-	r, _ := ioutil.ReadFile(pm2io.cpuProfilePath)
-	pm2io.transporter.Send("profilings", structures.NewProfilingResponse(string(r), "cpuprofile"))
-}
-
+// RestartTransporter including webSocket connection
 func (pm2io *Pm2Io) RestartTransporter() {
 	pm2io.transporter.CloseAndReconnect()
 }
 
+// SendStatus of current state
 func (pm2io *Pm2Io) SendStatus() {
 	if pm2io.StatusOverrider != nil {
 		pm2io.transporter.Send("status", pm2io.StatusOverrider())
 		return
 	}
-	p, _ := process.NewProcess(int32(os.Getpid()))
-	cp, _ := metrics.CPUPercent()
+	p, err := process.NewProcess(int32(os.Getpid()))
+	if err != nil {
+		pm2io.Notifier.Error(err)
+	}
+	cp, err := metrics.CPUPercent()
+	if err != nil {
+		pm2io.Notifier.Error(err)
+	}
 
 	var m runtime.MemStats
 	runtime.ReadMemStats(&m)
@@ -198,6 +186,7 @@ func (pm2io *Pm2Io) SendStatus() {
 	})
 }
 
+// Panic notify KM then panic
 func (pm2io *Pm2Io) Panic(err error) {
 	pm2io.Notifier.Error(err)
 	panic(err)
@@ -209,4 +198,20 @@ func randomHex(n int) (string, error) {
 		return "", err
 	}
 	return hex.EncodeToString(bytes), nil
+}
+
+func generateServerName(name string) (string, string) {
+	realHostname, err := os.Hostname()
+	serverName := ""
+	if err != nil || name != "" {
+		serverName = name
+	} else {
+		random, err := randomHex(5)
+		if err == nil {
+			serverName = realHostname + "_" + random
+		} else {
+			serverName = random
+		}
+	}
+	return serverName, realHostname
 }

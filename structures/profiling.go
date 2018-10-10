@@ -2,10 +2,12 @@ package structures
 
 import "time"
 
+// ProfilingRequest from KM
 type ProfilingRequest struct {
 	Timeout int64 `json:"timeout"`
 }
 
+// ProfilingResponse to KM (data as string)
 type ProfilingResponse struct {
 	Data      string `json:"data"`
 	At        int64  `json:"at"`
@@ -14,6 +16,7 @@ type ProfilingResponse struct {
 	Type      string `json:"type"`
 }
 
+// NewProfilingResponse with default values
 func NewProfilingResponse(data string, element string) ProfilingResponse {
 	res := ProfilingResponse{
 		Data:      data,

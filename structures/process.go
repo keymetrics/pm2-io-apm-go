@@ -1,5 +1,6 @@
 package structures
 
+// Process data
 type Process struct {
 	Pid         int32              `json:"pid"`
 	Name        string             `json:"name"`

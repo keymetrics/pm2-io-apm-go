@@ -1,5 +1,6 @@
 package structures
 
+// Server of status packet
 type Server struct {
 	Loadavg     []float64 `json:"loadavg"`
 	TotalMem    uint64    `json:"total_mem,omitempty"`
@@ -18,6 +19,7 @@ type Server struct {
 	RemotePort  int       `json:"remote_port"`
 }
 
+// CPU informations
 type CPU struct {
 	Number int    `json:"number"`
 	Info   string `json:"info"`

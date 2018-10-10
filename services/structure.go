@@ -2,6 +2,7 @@ package services
 
 import "github.com/keymetrics/pm2-io-apm-go/structures"
 
+// PayLoad is structure for receiving json data
 type PayLoad struct {
 	At         int64              `json:"at"`
 	Data       interface{}        `json:"data"`
@@ -13,12 +14,14 @@ type PayLoad struct {
 	RevCon     bool               `json:"rev_con"`
 }
 
+// Verify is the object send to root.keymetrics.io to get a node to connect
 type Verify struct {
 	PublicId  string     `json:"public_id"`
 	PrivateId string     `json:"private_id"`
 	Data      VerifyData `json:"data"`
 }
 
+// VerifyData is a part of Verify
 type VerifyData struct {
 	MachineName string `json:"MACHINE_NAME"`
 	Cpus        int    `json:"CPUS"`   //nb thread
@@ -27,10 +30,12 @@ type VerifyData struct {
 	Hostname    string `json:"HOSTNAME"`
 }
 
+// VerifyResponse is the object sent by root.keymetrics.io
 type VerifyResponse struct {
 	Endpoints Endpoints `json:"endpoints"`
 }
 
+// Endpoints list of root.keymetrics.io
 type Endpoints struct {
 	WS string `json:"ws"`
 }

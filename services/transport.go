@@ -15,6 +15,7 @@ import (
 	"github.com/keymetrics/pm2-io-apm-go/structures"
 )
 
+// Transporter handle, send and receive packet from KM
 type Transporter struct {
 	Config     *structures.Config
 	Version    string
@@ -33,11 +34,13 @@ type Transporter struct {
 	serverTicker    *time.Ticker // 10 minutes
 }
 
+// Message receive from KM
 type Message struct {
 	Payload interface{} `json:"payload"`
 	Channel string      `json:"channel"`
 }
 
+// NewTransporter with default values
 func NewTransporter(config *structures.Config, version string, hostname string, serverName string, node string) *Transporter {
 	return &Transporter{
 		Config:     config,
@@ -53,6 +56,7 @@ func NewTransporter(config *structures.Config, version string, hostname string, 
 	}
 }
 
+// GetServer check root.keymetrics.io to get current node
 func (transporter *Transporter) GetServer() *string {
 	verify := Verify{
 		PublicId:  transporter.Config.PublicKey,
@@ -83,6 +87,7 @@ func (transporter *Transporter) GetServer() *string {
 	return &response.Endpoints.WS
 }
 
+// Connect to current wsNode with headers and prepare handlers/tickers
 func (transporter *Transporter) Connect() {
 	if transporter.wsNode == nil {
 		transporter.wsNode = transporter.GetServer()
@@ -139,6 +144,7 @@ func (transporter *Transporter) Connect() {
 	}()
 }
 
+// SetHandlers for messages and pinger ticker
 func (transporter *Transporter) SetHandlers() {
 	transporter.isHandling = true
 
@@ -162,6 +168,7 @@ func (transporter *Transporter) SetHandlers() {
 	}()
 }
 
+// MessagesHandler from KM
 func (transporter *Transporter) MessagesHandler() {
 	for {
 		_, message, err := transporter.ws.ReadMessage()
@@ -214,6 +221,7 @@ func (transporter *Transporter) MessagesHandler() {
 	}
 }
 
+// SendJson marshal it and check errors
 func (transporter *Transporter) SendJson(msg interface{}) {
 	b, err := json.Marshal(msg)
 	if err != nil {
@@ -233,6 +241,7 @@ func (transporter *Transporter) SendJson(msg interface{}) {
 	}
 }
 
+// Send to specified channel
 func (transporter *Transporter) Send(channel string, data interface{}) {
 	transporter.SendJson(Message{
 		Channel: channel,
@@ -253,6 +262,7 @@ func (transporter *Transporter) Send(channel string, data interface{}) {
 	})
 }
 
+// CloseAndReconnect webSocket
 func (transporter *Transporter) CloseAndReconnect() {
 	if transporter.isConnecting {
 		return
@@ -266,10 +276,12 @@ func (transporter *Transporter) CloseAndReconnect() {
 	transporter.Connect()
 }
 
+// IsConnected expose if everything is running normally
 func (transporter *Transporter) IsConnected() bool {
-	return transporter.isConnected
+	return transporter.isConnected && transporter.isHandling && !transporter.isConnecting
 }
 
+// GetWsNode export current node
 func (transporter *Transporter) GetWsNode() *string {
 	return transporter.wsNode
 }

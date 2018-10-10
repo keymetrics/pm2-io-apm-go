@@ -13,6 +13,7 @@ type Metric struct {
 	Function func() float64 `json:"-"`
 }
 
+// Get current value and check func if provided
 func (metric *Metric) Get() float64 {
 	if metric.Function != nil {
 		metric.Value = metric.Function()
@@ -20,12 +21,14 @@ func (metric *Metric) Get() float64 {
 	return metric.Value
 }
 
+// Set current value
 func (metric *Metric) Set(value float64) {
 	metric.Value = value
 }
 
 var defaultAggregation = "avg"
 
+// CreateMetric with default values
 func CreateMetric(name string, category string, unit string) Metric {
 	return Metric{
 		Name:        name,
@@ -38,6 +41,7 @@ func CreateMetric(name string, category string, unit string) Metric {
 	}
 }
 
+// CreateFuncMetric with default values and exposed function
 func CreateFuncMetric(name string, category string, unit string, cb func() float64) Metric {
 	return Metric{
 		Name:        name,
