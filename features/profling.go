@@ -8,20 +8,20 @@ import (
 var currentPath string
 
 // HeapDump return a binary string of a pprof
-func HeapDump() (string, error) {
+func HeapDump() ([]byte, error) {
 	f, err := ioutil.TempFile("/tmp", "heapdump")
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	err = pprof.WriteHeapProfile(f)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	r, err := ioutil.ReadFile(f.Name())
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	return string(r), nil
+	return r, nil
 }
 
 // StartCPUProfile start a CPU profiling and write it to file
@@ -35,11 +35,11 @@ func StartCPUProfile() error {
 }
 
 // StopCPUProfile stop the profiling and read the file
-func StopCPUProfile() (string, error) {
+func StopCPUProfile() ([]byte, error) {
 	pprof.StopCPUProfile()
 	r, err := ioutil.ReadFile(currentPath)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	return string(r), nil
+	return r, nil
 }

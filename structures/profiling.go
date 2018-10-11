@@ -1,6 +1,9 @@
 package structures
 
-import "time"
+import (
+	b64 "encoding/base64"
+	"time"
+)
 
 // ProfilingRequest from KM
 type ProfilingRequest struct {
@@ -14,16 +17,18 @@ type ProfilingResponse struct {
 	Initiated string `json:"initiated"`
 	Duration  int    `json:"duration"`
 	Type      string `json:"type"`
+	Encoding  string `json:"encoding"`
 }
 
 // NewProfilingResponse with default values
-func NewProfilingResponse(data string, element string) ProfilingResponse {
+func NewProfilingResponse(data []byte, element string) ProfilingResponse {
 	res := ProfilingResponse{
-		Data:      data,
+		Data:      b64.StdEncoding.EncodeToString(data),
 		At:        time.Now().UnixNano() / int64(time.Millisecond),
 		Initiated: "manual",
 		Duration:  0,
 		Type:      element,
+		Encoding:  "base64",
 	}
 	return res
 }
