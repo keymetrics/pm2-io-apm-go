@@ -1,8 +1,6 @@
 package pm2io
 
 import (
-	"crypto/rand"
-	"encoding/hex"
 	"os"
 	"runtime"
 	"time"
@@ -14,7 +12,7 @@ import (
 	"github.com/shirou/gopsutil/process"
 )
 
-var version = "0.0.1-go"
+var version = "0.0.1"
 
 // Pm2Io to config and access all services
 type Pm2Io struct {
@@ -25,14 +23,15 @@ type Pm2Io struct {
 
 	StatusOverrider func() *structures.Status
 
-	serverName string
-	hostname   string
-	startTime  time.Time
+	hostname  string
+	startTime time.Time
 }
 
 // Start and prepare services + profiling
 func (pm2io *Pm2Io) Start() {
-	pm2io.serverName, pm2io.hostname = generateServerName(pm2io.Config.Name)
+	if pm2io.Config.ServerName == nil {
+		pm2io.Config.GenerateServerName()
+	}
 
 	node := pm2io.Config.Node
 	defaultNode := "root.keymetrics.io"
@@ -40,7 +39,7 @@ func (pm2io *Pm2Io) Start() {
 		node = &defaultNode
 	}
 
-	pm2io.transporter = services.NewTransporter(pm2io.Config, version, pm2io.hostname, pm2io.serverName, *node)
+	pm2io.transporter = services.NewTransporter(pm2io.Config, version, pm2io.hostname, *pm2io.Config.ServerName, *node)
 	pm2io.Notifier = &features.Notifier{
 		Transporter: pm2io.transporter,
 	}
@@ -139,15 +138,6 @@ func (pm2io *Pm2Io) SendStatus() {
 
 	kmProc := []structures.Process{}
 
-	options := structures.Options{
-		HeapDump:     true,
-		Profiling:    true,
-		CustomProbes: true,
-		Error:        true,
-		Errors:       true,
-		PmxVersion:   "2.4.1",
-	}
-
 	kmProc = append(kmProc, structures.Process{
 		Pid:         p.Pid,
 		Name:        pm2io.Config.Name,
@@ -164,7 +154,15 @@ func (pm2io *Pm2Io) SendStatus() {
 		NodeEnv:     "production",
 		AxmActions:  services.Actions,
 		AxmMonitor:  services.GetMetricsAsMap(),
-		AxmOptions:  options,
+		AxmOptions: structures.Options{
+			HeapDump:     true,
+			Profiling:    true,
+			CustomProbes: true,
+			Apm: structures.Apm{
+				Type:    "golang",
+				Version: version,
+			},
+		},
 	})
 
 	pm2io.transporter.Send("status", structures.Status{
@@ -190,28 +188,4 @@ func (pm2io *Pm2Io) SendStatus() {
 func (pm2io *Pm2Io) Panic(err error) {
 	pm2io.Notifier.Error(err)
 	panic(err)
-}
-
-func randomHex(n int) (string, error) {
-	bytes := make([]byte, n)
-	if _, err := rand.Read(bytes); err != nil {
-		return "", err
-	}
-	return hex.EncodeToString(bytes), nil
-}
-
-func generateServerName(name string) (string, string) {
-	realHostname, err := os.Hostname()
-	serverName := ""
-	if err != nil || name != "" {
-		serverName = name
-	} else {
-		random, err := randomHex(5)
-		if err == nil {
-			serverName = realHostname + "_" + random
-		} else {
-			serverName = random
-		}
-	}
-	return serverName, realHostname
 }

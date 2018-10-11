@@ -66,7 +66,7 @@ func (transporter *Transporter) GetServer() *string {
 			Cpus:        runtime.NumCPU(),
 			Memory:      metrics.TotalMem(),
 			Pm2Version:  transporter.Version,
-			Hostname:    transporter.Hostname,
+			Hostname:    transporter.ServerName,
 		},
 	}
 	jsonValue, _ := json.Marshal(verify)
