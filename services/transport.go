@@ -94,6 +94,7 @@ func (transporter *Transporter) Connect() {
 	}
 	if transporter.wsNode == nil {
 		go func() {
+			log.Println("Cannot get node, retry in 10sec")
 			time.Sleep(10 * time.Second)
 			transporter.Connect()
 		}()
@@ -268,7 +269,7 @@ func (transporter *Transporter) CloseAndReconnect() {
 		return
 	}
 
-	if !transporter.isClosed {
+	if !transporter.isClosed && transporter.ws != nil {
 		transporter.ws.Close()
 	}
 	transporter.isConnected = false
