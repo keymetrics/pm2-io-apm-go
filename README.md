@@ -16,43 +16,43 @@ import (
 func main() {
   // Create PM2 connector
   pm2 := pm2io.Pm2Io{
-		Config: &structures.Config{
-			PublicKey:  "myPublic",
-			PrivateKey: "myPrivate",
-			Name:       "Golang app",
-		},
+    Config: &structures.Config{
+      PublicKey:  "myPublic",
+      PrivateKey: "myPrivate",
+      Name:       "Golang app",
+    },
   }
   
   // Add an action who can be triggered from PM2 Plus
   services.AddAction(&structures.Action{
-		ActionName: "Get env",
-		Callback: func() string {
-			return strings.Join(os.Environ(), "\n")
-		},
+    ActionName: "Get env",
+    Callback: func() string {
+      return strings.Join(os.Environ(), "\n")
+    },
   })
   
   // Add a function metric who will be aggregated
   nbd := structures.CreateFuncMetric("Function metric", "metric", "stable/integer", func() float64 {
     // For a FuncMetric, this will be called every ~1sec
-		return float64(10)
-	})
+    return float64(10)
+  })
   services.AddMetric(&nbd)
   
   // Add a normal metric
   nbreq := structures.CreateMetric("Incrementable", "metric", "increments")
-	services.AddMetric(&nbreq)
+  services.AddMetric(&nbreq)
 
   // Goroutine who increment the value each 4 seconds
   go func() {
-		ticker := time.NewTicker(4 * time.Second)
-		for {
-			<-ticker.C
+    ticker := time.NewTicker(4 * time.Second)
+    for {
+      <-ticker.C
       nbreq.Value++
 
       // Log to PM2 Plus
       pm2io.Notifier.Log("Value incremented")
-		}
-	}()
+    }
+  }()
 
   // Start the connection to PM2 Plus servers
   pm2.Start()
@@ -72,61 +72,61 @@ If you are using logrus, this is an example to send logs and create exceptions o
 package main
 
 import (
-	pm2io "github.com/keymetrics/pm2-io-apm-go"
-	"github.com/sirupsen/logrus"
+  pm2io "github.com/keymetrics/pm2-io-apm-go"
+  "github.com/sirupsen/logrus"
 )
 
 // HookLog will send logs to PM2 Plus
 type HookLog struct {
-	Pm2 *pm2io.Pm2Io
+  Pm2 *pm2io.Pm2Io
 }
 
 // HookErr will send all errors to PM2 Plus
 type HookErr struct {
-	Pm2 *pm2io.Pm2Io
+  Pm2 *pm2io.Pm2Io
 }
 
 // Fire event
 func (hook *HookLog) Fire(e *logrus.Entry) error {
-	str, err := e.String()
-	if err == nil {
-		hook.Pm2.Notifier.Log(str)
-	}
-	return err
+  str, err := e.String()
+  if err == nil {
+    hook.Pm2.Notifier.Log(str)
+  }
+  return err
 }
 
 // Levels for all possible logs
 func (*HookLog) Levels() []logrus.Level {
-	return logrus.AllLevels
+  return logrus.AllLevels
 }
 
 // Fire an error and notify it as exception
 func (hook *HookErr) Fire(e *logrus.Entry) error {
-	if err, ok := e.Data["error"].(error); ok {
-		hook.Pm2.Notifier.Error(err)
-	}
-	return nil
+  if err, ok := e.Data["error"].(error); ok {
+    hook.Pm2.Notifier.Error(err)
+  }
+  return nil
 }
 
 // Levels only for errors
 func (*HookErr) Levels() []logrus.Level {
-	return []logrus.Level{logrus.ErrorLevel}
+  return []logrus.Level{logrus.ErrorLevel}
 }
 
 func main() {
   pm2 := pm2io.Pm2Io{
-		Config: &structures.Config{
-			PublicKey:  "myPublic",
-			PrivateKey: "myPrivate",
-			Name:       "Golang app",
-		},
+    Config: &structures.Config{
+      PublicKey:  "myPublic",
+      PrivateKey: "myPrivate",
+      Name:       "Golang app",
+    },
   }
 
   logrus.AddHook(&HookLog{
-		Pm2: pm2,
-	})
-	logrus.AddHook(&HookErr{
-		Pm2: pm2,
-	})
+    Pm2: pm2,
+  })
+  logrus.AddHook(&HookErr{
+    Pm2: pm2,
+  })
 }
 ```

@@ -13,7 +13,7 @@ func TestAction(t *testing.T) {
 	t.Run("Create action", func(t *testing.T) {
 		action = structures.Action{
 			ActionName: "MyAction",
-			Callback: func() string {
+			Callback: func(_ map[string]interface{}) string {
 				return "GOOD"
 			},
 		}
@@ -24,14 +24,14 @@ func TestAction(t *testing.T) {
 	})
 
 	t.Run("Must return correct value", func(t *testing.T) {
-		resp := services.CallAction("MyAction")
+		resp := services.CallAction("MyAction", map[string]interface{}{})
 		if resp == nil {
 			t.Fatal("response is nil")
 		}
 	})
 
 	t.Run("Must return nil for unknown action call", func(t *testing.T) {
-		resp := services.CallAction("Unknown")
+		resp := services.CallAction("Unknown", map[string]interface{}{})
 		if resp != nil {
 			t.Fatal("response is not nil")
 		}
