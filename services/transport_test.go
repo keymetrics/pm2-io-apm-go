@@ -1,17 +1,24 @@
 package services_test
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"runtime"
+	"strings"
 	"testing"
-	"time"
 
+	"github.com/gorilla/websocket"
 	"github.com/keymetrics/pm2-io-apm-go/features/metrics"
 	"github.com/keymetrics/pm2-io-apm-go/services"
 	"github.com/keymetrics/pm2-io-apm-go/structures"
 	gock "gopkg.in/h2non/gock.v1"
 )
 
+var nbConnected int
+
 func TestTransport(t *testing.T) {
+	var wssServer *httptest.Server
+
 	var transporter *services.Transporter
 
 	t.Run("Create transporter", func(t *testing.T) {
@@ -25,11 +32,8 @@ func TestTransport(t *testing.T) {
 		}
 	})
 
-	t.Run("Connect transporter", func(t *testing.T) {
-		transporter.Connect()
-		if transporter.IsConnected() {
-			t.Fatal("transporter shouldn't be connected")
-		}
+	t.Run("Mock wss", func(t *testing.T) {
+		wssServer = httptest.NewServer(http.HandlerFunc(echo))
 	})
 
 	t.Run("Mock http server for verifier", func(t *testing.T) {
@@ -41,7 +45,7 @@ func TestTransport(t *testing.T) {
 				Cpus:        runtime.NumCPU(),
 				Memory:      metrics.TotalMem(),
 				Pm2Version:  transporter.Version,
-				Hostname:    transporter.Hostname,
+				Hostname:    transporter.ServerName,
 			},
 		}
 
@@ -52,25 +56,46 @@ func TestTransport(t *testing.T) {
 			Reply(200).
 			JSON(services.VerifyResponse{
 				Endpoints: services.Endpoints{
-					WS: "ws://127.0.0.1/myWs",
+					WS: "ws" + strings.TrimPrefix(wssServer.URL, "http"),
 				},
 			})
 	})
 
-	t.Run("Wait for node", func(t *testing.T) {
-		t.Log("start loop")
-		for i := 0; i < 20; i++ {
-			srv := transporter.GetServer()
-			t.Log(srv)
-			if srv != nil {
-				return
-			}
-			time.Sleep(1 * time.Second)
+	t.Run("Connect transporter", func(t *testing.T) {
+		transporter.Connect()
+		if !transporter.IsConnected() {
+			t.Fatal("transporter is not connected")
 		}
-		t.Fatal("Server not detected")
 	})
 
 	t.Run("Wait for ws connection", func(t *testing.T) {
-
+		if nbConnected == 0 {
+			t.Fatal("WS not connected")
+		}
+		if nbConnected != 1 {
+			t.Fatal("WS connected more than one time")
+		}
 	})
+}
+
+var upgrader = websocket.Upgrader{}
+
+func echo(w http.ResponseWriter, r *http.Request) {
+	c, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		return
+	}
+	defer c.Close()
+	nbConnected++
+	for {
+		mt, message, err := c.ReadMessage()
+		if err != nil {
+			break
+		}
+		err = c.WriteMessage(mt, message)
+		if err != nil {
+			break
+		}
+	}
+	nbConnected--
 }
