@@ -5,6 +5,7 @@ workspace:
 pipeline:
   tests:
     image: golang:latest
+    secrets: [ codecov_token ]
     commands:
       - go get -t -v
       - go get gopkg.in/h2non/gock.v1
