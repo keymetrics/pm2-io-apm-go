@@ -269,11 +269,11 @@ func (transporter *Transporter) CloseAndReconnect() {
 		return
 	}
 
+	transporter.isConnecting = true
 	if !transporter.isClosed && transporter.ws != nil {
+		transporter.isConnected = false
 		transporter.ws.Close()
 	}
-	transporter.isConnected = false
-	transporter.isConnecting = true
 	transporter.Connect()
 }
 

@@ -1,11 +1,14 @@
 package services_test
 
 import (
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"runtime"
+	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/keymetrics/pm2-io-apm-go/features/metrics"
@@ -18,6 +21,7 @@ var nbConnected int
 
 func TestTransport(t *testing.T) {
 	var wssServer *httptest.Server
+	var gockVerif *gock.Response
 
 	var transporter *services.Transporter
 
@@ -49,7 +53,7 @@ func TestTransport(t *testing.T) {
 			},
 		}
 
-		gock.New("https://root.keymetrics.io").
+		gockVerif = gock.New("https://root.keymetrics.io").
 			Post("/api/node/verifyPM2").
 			MatchType("json").
 			JSON(verify).
@@ -69,11 +73,41 @@ func TestTransport(t *testing.T) {
 	})
 
 	t.Run("Wait for ws connection", func(t *testing.T) {
-		if nbConnected == 0 {
-			t.Fatal("WS not connected")
-		}
 		if nbConnected != 1 {
-			t.Fatal("WS connected more than one time")
+			t.Fatal("WS connected wanted: 1, connected: " + strconv.Itoa(nbConnected))
+		}
+	})
+
+	t.Run("Try to close and reconnect", func(t *testing.T) {
+		transporter.CloseAndReconnect()
+		time.Sleep(2 * time.Second)
+		if nbConnected != 1 {
+			t.Fatal("WS connected wanted: 1, connected: " + strconv.Itoa(nbConnected))
+		}
+	})
+
+	t.Run("Shouldn't crash without WSS", func(t *testing.T) {
+		wssServer.Close()
+		nbConnected = 0
+		time.Sleep(2 * time.Second)
+	})
+
+	t.Skip("Should get new node and connect to it")
+	t.Run("Should get new node and connect to it", func(t *testing.T) {
+		wssServer = httptest.NewServer(http.HandlerFunc(echo))
+
+		gockVerif.JSON(services.VerifyResponse{
+			Endpoints: services.Endpoints{
+				WS: "ws" + strings.TrimPrefix(wssServer.URL, "http"),
+			},
+		})
+
+		transporter.Node = "ws" + strings.TrimPrefix(wssServer.URL, "http")
+		time.Sleep(8 * time.Second)
+		if nbConnected != 1 {
+			t.Log("Transporter node: " + transporter.Node)
+			t.Log("Node wanted: " + "ws" + strings.TrimPrefix(wssServer.URL, "http"))
+			t.Fatal("WS connected wanted: 1, connected: " + strconv.Itoa(nbConnected))
 		}
 	})
 }
@@ -87,15 +121,13 @@ func echo(w http.ResponseWriter, r *http.Request) {
 	}
 	defer c.Close()
 	nbConnected++
+	log.Println("New conn")
 	for {
-		mt, message, err := c.ReadMessage()
+		_, _, err := c.ReadMessage()
 		if err != nil {
-			break
-		}
-		err = c.WriteMessage(mt, message)
-		if err != nil {
-			break
+			log.Println("Conn closed")
+			nbConnected--
+			return
 		}
 	}
-	nbConnected--
 }
