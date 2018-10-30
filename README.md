@@ -65,6 +65,16 @@ func main() {
 }
 ```
 
+## Send error then panic
+You can send an error to PM2 Plus before panic your program
+```golang
+name, err := os.Hostname()
+if err != nil {
+  pm2io.Panic(err)
+  // The program will crash with panic just after the message is sent
+}
+```
+
 ## Connect logrus to PM2 Plus
 If you are using logrus, this is an example to send logs and create exceptions on PM2 Plus when you log an error
 
