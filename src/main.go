@@ -18,8 +18,8 @@ import (
 func main() {
 	Pm2Io := pm2io.Pm2Io{
 		Config: &structures.Config{
-			PublicKey:  "9nc25845w31vqeq",
-			PrivateKey: "1e34mwmtaid0pr7",
+			PublicKey:  "ft_public",
+			PrivateKey: "ft_private",
 			Name:       "Golang App",
 		},
 	}
@@ -102,5 +102,5 @@ func main() {
 		}
 	}()*/
 
-	http.ListenAndServe(":8081", nil)
+	http.ListenAndServe(":8089", nil)
 }
