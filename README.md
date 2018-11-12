@@ -26,7 +26,7 @@ func main() {
   // Add an action who can be triggered from PM2 Plus
   services.AddAction(&structures.Action{
     ActionName: "Get env",
-    Callback: func() string {
+    Callback: func(_ map[string]interface{}) string {
       return strings.Join(os.Environ(), "\n")
     },
   })
@@ -139,4 +139,18 @@ func main() {
     Pm2: pm2,
   })
 }
+```
+
+## Known problems
+### x509: unknown authority
+You must have the **Let's Encrypt Authority X3** certificate on your machine/container to connect to our backend
+
+#### Alpine based container
+```sh
+apk add -U --no-cache ca-certificates
+```
+
+#### Debian based container
+```sh
+apt-get install -y ca-certificates
 ```
