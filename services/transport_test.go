@@ -29,7 +29,7 @@ func TestTransport(t *testing.T) {
 		transporter = services.NewTransporter(&structures.Config{
 			PublicKey:  "pubKey",
 			PrivateKey: "privKey",
-		}, "version", "hostname", "serverName", "root.keymetrics.io")
+		}, "version", "hostname", "serverName", "api.cloud.pm2.io")
 
 		if transporter == nil {
 			t.Fatal("transporter is nil")
@@ -53,7 +53,7 @@ func TestTransport(t *testing.T) {
 			},
 		}
 
-		gockVerif = gock.New("https://root.keymetrics.io").
+		gockVerif = gock.New("https://api.cloud.pm2.io").
 			Post("/api/node/verifyPM2").
 			MatchType("json").
 			JSON(verify).

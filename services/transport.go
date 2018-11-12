@@ -56,7 +56,7 @@ func NewTransporter(config *structures.Config, version string, hostname string, 
 	}
 }
 
-// GetServer check root.keymetrics.io to get current node
+// GetServer check api.cloud.pm2.io to get current node
 func (transporter *Transporter) GetServer() *string {
 	verify := Verify{
 		PublicId:  transporter.Config.PublicKey,
@@ -72,6 +72,7 @@ func (transporter *Transporter) GetServer() *string {
 	jsonValue, _ := json.Marshal(verify)
 	res, err := http.Post("https://"+transporter.Node+"/api/node/verifyPM2", "application/json", bytes.NewBuffer(jsonValue))
 	if err != nil {
+		log.Println(err)
 		return nil
 	}
 	data, err := ioutil.ReadAll(res.Body)

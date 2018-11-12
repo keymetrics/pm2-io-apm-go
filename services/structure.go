@@ -14,7 +14,7 @@ type PayLoad struct {
 	RevCon     bool               `json:"rev_con"`
 }
 
-// Verify is the object send to root.keymetrics.io to get a node to connect
+// Verify is the object send to api.cloud.pm2.io to get a node to connect
 type Verify struct {
 	PublicId  string     `json:"public_id"`
 	PrivateId string     `json:"private_id"`
@@ -30,12 +30,12 @@ type VerifyData struct {
 	Hostname    string `json:"HOSTNAME"`
 }
 
-// VerifyResponse is the object sent by root.keymetrics.io
+// VerifyResponse is the object sent by api.cloud.pm2.io
 type VerifyResponse struct {
 	Endpoints Endpoints `json:"endpoints"`
 }
 
-// Endpoints list of root.keymetrics.io
+// Endpoints list of api.cloud.pm2.io
 type Endpoints struct {
 	WS string `json:"ws"`
 }

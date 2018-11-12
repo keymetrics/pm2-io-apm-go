@@ -34,7 +34,7 @@ func (pm2io *Pm2Io) Start() {
 	}
 
 	node := pm2io.Config.Node
-	defaultNode := "root.keymetrics.io"
+	defaultNode := "api.cloud.pm2.io"
 	if node == nil {
 		node = &defaultNode
 	}
