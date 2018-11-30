@@ -11,21 +11,23 @@ type Config struct {
 	PublicKey  string
 	PrivateKey string
 	Name       string
-	ServerName *string
+	ServerName string
+	Hostname   string
 	Node       *string
 	Proxy      string
 }
 
-// GenerateServerName with random values
-func (config *Config) GenerateServerName() {
+// InitNames with random values
+func (config *Config) InitNames() {
 	realHostname, err := os.Hostname()
-	random := randomHex(5)
 	if err != nil {
-		config.ServerName = &random
-		return
+		config.Hostname = randomHex(5)
+	} else {
+		config.Hostname = realHostname
 	}
-	serverName := realHostname + "_" + random
-	config.ServerName = &serverName
+	if config.ServerName == "" {
+		config.ServerName = config.Hostname
+	}
 }
 
 func randomHex(n int) string {

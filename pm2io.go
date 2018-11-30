@@ -23,26 +23,63 @@ type Pm2Io struct {
 
 	StatusOverrider func() *structures.Status
 
-	hostname  string
 	startTime time.Time
 }
 
 // Start and prepare services + profiling
 func (pm2io *Pm2Io) Start() {
-	if pm2io.Config.ServerName == nil {
-		pm2io.Config.GenerateServerName()
-	}
+	pm2io.Config.InitNames()
 
-	node := pm2io.Config.Node
 	defaultNode := "api.cloud.pm2.io"
-	if node == nil {
-		node = &defaultNode
+	if pm2io.Config.Node == nil {
+		pm2io.Config.Node = &defaultNode
 	}
 
-	pm2io.transporter = services.NewTransporter(pm2io.Config, version, pm2io.hostname, *pm2io.Config.ServerName, *node)
+	pm2io.transporter = services.NewTransporter(pm2io.Config, version)
 	pm2io.Notifier = &features.Notifier{
 		Transporter: pm2io.transporter,
 	}
+
+	pm2io.prepareMetrics()
+	pm2io.prepareProfiling()
+
+	pm2io.startTime = time.Now()
+	pm2io.transporter.Connect()
+
+	go func() {
+		ticker := time.NewTicker(time.Second)
+		for {
+			<-ticker.C
+			pm2io.SendStatus()
+		}
+	}()
+}
+
+// RestartTransporter including webSocket connection
+func (pm2io *Pm2Io) RestartTransporter() {
+	pm2io.transporter.CloseAndReconnect()
+}
+
+// SendStatus of current state
+func (pm2io *Pm2Io) SendStatus() {
+	if pm2io.StatusOverrider != nil {
+		pm2io.transporter.Send("status", pm2io.StatusOverrider())
+		return
+	}
+
+	pm2io.transporter.Send("status", structures.Status{
+		Process: pm2io.getProcesses(),
+		Server:  pm2io.getServer(),
+	})
+}
+
+// Panic notify KM then panic
+func (pm2io *Pm2Io) Panic(err error) {
+	pm2io.Notifier.Error(err)
+	panic(err)
+}
+
+func (pm2io *Pm2Io) prepareMetrics() {
 	metrics.InitMetricsMemStats()
 	services.AttachHandler(metrics.Handler)
 	services.AddMetric(metrics.GoRoutines())
@@ -52,7 +89,9 @@ func (pm2io *Pm2Io) Start() {
 	services.AddMetric(metrics.GlobalMetricsMemStats.NumFree)
 	services.AddMetric(metrics.GlobalMetricsMemStats.HeapAlloc)
 	services.AddMetric(metrics.GlobalMetricsMemStats.Pause)
+}
 
+func (pm2io *Pm2Io) prepareProfiling() {
 	services.AddAction(&structures.Action{
 		ActionName: "km:heapdump",
 		ActionType: "internal",
@@ -100,30 +139,26 @@ func (pm2io *Pm2Io) Start() {
 			return ""
 		},
 	})
-
-	pm2io.startTime = time.Now()
-	pm2io.transporter.Connect()
-
-	go func() {
-		ticker := time.NewTicker(time.Second)
-		for {
-			<-ticker.C
-			pm2io.SendStatus()
-		}
-	}()
 }
 
-// RestartTransporter including webSocket connection
-func (pm2io *Pm2Io) RestartTransporter() {
-	pm2io.transporter.CloseAndReconnect()
-}
-
-// SendStatus of current state
-func (pm2io *Pm2Io) SendStatus() {
-	if pm2io.StatusOverrider != nil {
-		pm2io.transporter.Send("status", pm2io.StatusOverrider())
-		return
+func (pm2io *Pm2Io) getServer() structures.Server {
+	return structures.Server{
+		Loadavg:     metrics.CPULoad(),
+		TotalMem:    metrics.TotalMem(),
+		Hostname:    pm2io.Config.Hostname,
+		Uptime:      (time.Now().UnixNano()-pm2io.startTime.UnixNano())/int64(time.Millisecond) + 600000,
+		Pm2Version:  version,
+		Type:        runtime.GOOS,
+		Interaction: true,
+		CPU: structures.CPU{
+			Number: runtime.NumCPU(),
+			Info:   metrics.CPUName(),
+		},
+		NodeVersion: runtime.Version(),
 	}
+}
+
+func (pm2io *Pm2Io) getProcesses() []structures.Process {
 	p, err := process.NewProcess(int32(os.Getpid()))
 	if err != nil {
 		pm2io.Notifier.Error(err)
@@ -133,59 +168,30 @@ func (pm2io *Pm2Io) SendStatus() {
 		pm2io.Notifier.Error(err)
 	}
 
-	var m runtime.MemStats
-	runtime.ReadMemStats(&m)
-
-	kmProc := []structures.Process{}
-
-	kmProc = append(kmProc, structures.Process{
-		Pid:         p.Pid,
-		Name:        pm2io.Config.Name,
-		Interpreter: "golang",
-		RestartTime: 0,
-		CreatedAt:   pm2io.startTime.UnixNano() / int64(time.Millisecond),
-		ExecMode:    "fork_mode",
-		Watching:    false,
-		PmUptime:    pm2io.startTime.UnixNano() / int64(time.Millisecond),
-		Status:      "online",
-		PmID:        0,
-		CPU:         cp,
-		Memory:      m.Alloc,
-		NodeEnv:     "production",
-		AxmActions:  services.Actions,
-		AxmMonitor:  services.GetMetricsAsMap(),
-		AxmOptions: structures.Options{
-			HeapDump:     true,
-			Profiling:    true,
-			CustomProbes: true,
-			Apm: structures.Apm{
-				Type:    "golang",
-				Version: version,
+	return []structures.Process{
+		structures.Process{
+			Pid:         p.Pid,
+			Name:        pm2io.Config.Name,
+			Interpreter: "golang",
+			RestartTime: 0,
+			CreatedAt:   pm2io.startTime.UnixNano() / int64(time.Millisecond),
+			ExecMode:    "fork_mode",
+			PmUptime:    pm2io.startTime.UnixNano() / int64(time.Millisecond),
+			Status:      "online",
+			PmID:        0,
+			CPU:         cp,
+			Memory:      uint64(metrics.GlobalMetricsMemStats.HeapAlloc.Value),
+			AxmActions:  services.Actions,
+			AxmMonitor:  services.GetMetricsAsMap(),
+			AxmOptions: structures.Options{
+				HeapDump:     true,
+				Profiling:    true,
+				CustomProbes: true,
+				Apm: structures.Apm{
+					Type:    "golang",
+					Version: version,
+				},
 			},
 		},
-	})
-
-	pm2io.transporter.Send("status", structures.Status{
-		Process: kmProc,
-		Server: structures.Server{
-			Loadavg:     metrics.CPULoad(),
-			TotalMem:    metrics.TotalMem(),
-			Hostname:    pm2io.hostname,
-			Uptime:      (time.Now().UnixNano()-pm2io.startTime.UnixNano())/int64(time.Millisecond) + 600000,
-			Pm2Version:  version,
-			Type:        runtime.GOOS,
-			Interaction: true,
-			CPU: structures.CPU{
-				Number: runtime.NumCPU(),
-				Info:   metrics.CPUName(),
-			},
-			NodeVersion: runtime.Version(),
-		},
-	})
-}
-
-// Panic notify KM then panic
-func (pm2io *Pm2Io) Panic(err error) {
-	pm2io.Notifier.Error(err)
-	panic(err)
+	}
 }
