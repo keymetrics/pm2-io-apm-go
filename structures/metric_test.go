@@ -6,7 +6,7 @@ import (
 	"github.com/keymetrics/pm2-io-apm-go/structures"
 )
 
-func MetricTest(t *testing.T) {
+func TestMetric(t *testing.T) {
 	var funcMetric structures.Metric
 	var stdMetric structures.Metric
 

@@ -26,5 +26,8 @@ func TestConfig(t *testing.T) {
 		if config.ServerName == "" {
 			t.Fatal("No serverName generated")
 		}
+		if config.Hostname == "" {
+			t.Fatal("No hostname")
+		}
 	})
 }
