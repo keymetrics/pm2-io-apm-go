@@ -23,23 +23,19 @@ type Pm2Io struct {
 
 	StatusOverrider func() *structures.Status
 
-	hostname  string
 	startTime time.Time
 }
 
 // Start and prepare services + profiling
 func (pm2io *Pm2Io) Start() {
-	if pm2io.Config.ServerName == nil {
-		pm2io.Config.GenerateServerName()
-	}
+	pm2io.Config.InitNames()
 
-	node := pm2io.Config.Node
 	defaultNode := "api.cloud.pm2.io"
-	if node == nil {
-		node = &defaultNode
+	if pm2io.Config.Node == nil {
+		pm2io.Config.Node = &defaultNode
 	}
 
-	pm2io.transporter = services.NewTransporter(pm2io.Config, version, pm2io.hostname, *pm2io.Config.ServerName, *node)
+	pm2io.transporter = services.NewTransporter(pm2io.Config, version)
 	pm2io.Notifier = &features.Notifier{
 		Transporter: pm2io.transporter,
 	}
@@ -170,7 +166,7 @@ func (pm2io *Pm2Io) SendStatus() {
 		Server: structures.Server{
 			Loadavg:     metrics.CPULoad(),
 			TotalMem:    metrics.TotalMem(),
-			Hostname:    pm2io.hostname,
+			Hostname:    pm2io.Config.Hostname,
 			Uptime:      (time.Now().UnixNano()-pm2io.startTime.UnixNano())/int64(time.Millisecond) + 600000,
 			Pm2Version:  version,
 			Type:        runtime.GOOS,

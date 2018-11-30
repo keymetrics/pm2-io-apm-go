@@ -18,11 +18,8 @@ import (
 
 // Transporter handle, send and receive packet from KM
 type Transporter struct {
-	Config     *structures.Config
-	Version    string
-	Hostname   string
-	ServerName string
-	Node       string
+	Config  *structures.Config
+	Version string
 
 	ws              *websocket.Conn
 	mu              sync.Mutex
@@ -42,13 +39,10 @@ type Message struct {
 }
 
 // NewTransporter with default values
-func NewTransporter(config *structures.Config, version string, hostname string, serverName string, node string) *Transporter {
+func NewTransporter(config *structures.Config, version string) *Transporter {
 	return &Transporter{
-		Config:     config,
-		Version:    version,
-		Hostname:   hostname,
-		ServerName: serverName,
-		Node:       node,
+		Config:  config,
+		Version: version,
 
 		isHandling:   false,
 		isConnecting: false,
@@ -63,16 +57,16 @@ func (transporter *Transporter) GetServer() *string {
 		PublicId:  transporter.Config.PublicKey,
 		PrivateId: transporter.Config.PrivateKey,
 		Data: VerifyData{
-			MachineName: transporter.ServerName,
+			MachineName: transporter.Config.ServerName,
 			Cpus:        runtime.NumCPU(),
 			Memory:      metrics.TotalMem(),
 			Pm2Version:  transporter.Version,
-			Hostname:    transporter.ServerName,
+			Hostname:    transporter.Config.Hostname,
 		},
 	}
 	jsonValue, _ := json.Marshal(verify)
 
-	res, err := transporter.httpClient().Post("https://"+transporter.Node+"/api/node/verifyPM2", "application/json", bytes.NewBuffer(jsonValue))
+	res, err := transporter.httpClient().Post("https://"+*transporter.Config.Node+"/api/node/verifyPM2", "application/json", bytes.NewBuffer(jsonValue))
 	if err != nil {
 		log.Println(err)
 		return nil
@@ -107,7 +101,7 @@ func (transporter *Transporter) Connect() {
 	headers := http.Header{}
 	headers.Add("X-KM-PUBLIC", transporter.Config.PublicKey)
 	headers.Add("X-KM-SECRET", transporter.Config.PrivateKey)
-	headers.Add("X-KM-SERVER", transporter.ServerName)
+	headers.Add("X-KM-SERVER", transporter.Config.ServerName)
 	headers.Add("X-PM2-VERSION", transporter.Version)
 	headers.Add("X-PROTOCOL-VERSION", "1")
 
@@ -280,11 +274,11 @@ func (transporter *Transporter) Send(channel string, data interface{}) {
 			Process: structures.Process{
 				PmID:   0,
 				Name:   transporter.Config.Name,
-				Server: transporter.ServerName,
+				Server: transporter.Config.ServerName, // WARN: maybe error here
 			},
 			Data:       data,
 			Active:     true,
-			ServerName: transporter.ServerName,
+			ServerName: transporter.Config.ServerName,
 			Protected:  false,
 			RevCon:     true,
 			InternalIP: metrics.LocalIP(),

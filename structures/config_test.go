@@ -16,14 +16,14 @@ func TestConfig(t *testing.T) {
 	})
 
 	t.Run("Shouldn't have a serverName", func(t *testing.T) {
-		if config.ServerName != nil {
+		if config.ServerName != "" {
 			t.Fatal("Already have a serverName")
 		}
 	})
 
 	t.Run("Should set a serverName", func(t *testing.T) {
-		config.GenerateServerName()
-		if config.ServerName == nil {
+		config.InitNames()
+		if config.ServerName == "" {
 			t.Fatal("No serverName generated")
 		}
 	})

@@ -24,12 +24,14 @@ func TestTransport(t *testing.T) {
 	var gockVerif *gock.Response
 
 	var transporter *services.Transporter
+	defaultNode := "api.cloud.pm2.io"
 
 	t.Run("Create transporter", func(t *testing.T) {
 		transporter = services.NewTransporter(&structures.Config{
 			PublicKey:  "pubKey",
 			PrivateKey: "privKey",
-		}, "version", "hostname", "serverName", "api.cloud.pm2.io")
+			Node:       &defaultNode, // Normally set by pm2io
+		}, "version")
 
 		if transporter == nil {
 			t.Fatal("transporter is nil")
@@ -45,11 +47,11 @@ func TestTransport(t *testing.T) {
 			PublicId:  transporter.Config.PublicKey,
 			PrivateId: transporter.Config.PrivateKey,
 			Data: services.VerifyData{
-				MachineName: transporter.ServerName,
+				MachineName: transporter.Config.Hostname,
 				Cpus:        runtime.NumCPU(),
 				Memory:      metrics.TotalMem(),
 				Pm2Version:  transporter.Version,
-				Hostname:    transporter.ServerName,
+				Hostname:    transporter.Config.ServerName,
 			},
 		}
 
@@ -102,10 +104,11 @@ func TestTransport(t *testing.T) {
 			},
 		})
 
-		transporter.Node = "ws" + strings.TrimPrefix(wssServer.URL, "http")
+		newNode := "ws" + strings.TrimPrefix(wssServer.URL, "http")
+		transporter.Config.Node = &newNode
 		time.Sleep(8 * time.Second)
 		if nbConnected != 1 {
-			t.Log("Transporter node: " + transporter.Node)
+			t.Log("Transporter node: " + *transporter.Config.Node)
 			t.Log("Node wanted: " + "ws" + strings.TrimPrefix(wssServer.URL, "http"))
 			t.Fatal("WS connected wanted: 1, connected: " + strconv.Itoa(nbConnected))
 		}
