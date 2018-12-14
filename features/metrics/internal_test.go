@@ -21,8 +21,8 @@ func TestInternal(t *testing.T) {
 		}
 	})
 
-	t.Run("Should init metrics stats", func(t *testing.T) {
-		metrics.InitMetricsMemStats()
+	t.Run("Should internal metrics", func(t *testing.T) {
+		metrics.InitInternalMetrics()
 	})
 
 	t.Run("should run handler without problem", func(t *testing.T) {
