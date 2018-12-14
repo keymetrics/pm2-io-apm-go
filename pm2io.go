@@ -43,8 +43,9 @@ func (pm2io *Pm2Io) Start() {
 	pm2io.Notifier = &features.Notifier{
 		Transporter: pm2io.transporter,
 	}
-	metrics.InitMetricsMemStats()
+	metrics.InitInternalMetrics()
 	services.AttachHandler(metrics.Handler)
+
 	services.AddMetric(metrics.GoRoutines())
 	services.AddMetric(metrics.CgoCalls())
 	services.AddMetric(metrics.GlobalMetricsMemStats.NumGC)
@@ -52,6 +53,11 @@ func (pm2io *Pm2Io) Start() {
 	services.AddMetric(metrics.GlobalMetricsMemStats.NumFree)
 	services.AddMetric(metrics.GlobalMetricsMemStats.HeapAlloc)
 	services.AddMetric(metrics.GlobalMetricsMemStats.Pause)
+
+	services.AddMetric(metrics.GlobalRuntimeStats.VolontarySwitchs)
+	services.AddMetric(metrics.GlobalRuntimeStats.InvolontarySwitchs)
+	services.AddMetric(metrics.GlobalRuntimeStats.SoftPageFault)
+	services.AddMetric(metrics.GlobalRuntimeStats.HardPageFault)
 
 	services.AddAction(&structures.Action{
 		ActionName: "km:heapdump",

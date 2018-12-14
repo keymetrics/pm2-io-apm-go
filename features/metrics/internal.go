@@ -2,6 +2,7 @@ package metrics
 
 import (
 	"runtime"
+	"syscall"
 
 	"github.com/keymetrics/pm2-io-apm-go/structures"
 )
@@ -24,8 +25,18 @@ type MetricsMemStats struct {
 	LastPause float64
 }
 
+type RuntimeStats struct {
+	VolontarySwitchs   *structures.Metric
+	InvolontarySwitchs *structures.Metric
+	SoftPageFault      *structures.Metric
+	HardPageFault      *structures.Metric
+}
+
 // GlobalMetricsMemStats store current and last mem stats
 var GlobalMetricsMemStats MetricsMemStats
+
+// GlobalRuntimeStats store runtime stats
+var GlobalRuntimeStats RuntimeStats
 
 // GoRoutines create a func metric who return number of current GoRoutines
 func GoRoutines() *structures.Metric {
@@ -47,8 +58,8 @@ func CgoCalls() *structures.Metric {
 	return &metric
 }
 
-// InitMetricsMemStats create metrics for MemStats
-func InitMetricsMemStats() {
+// InitInternalMetrics create metrics
+func InitInternalMetrics() {
 	numGC := structures.CreateMetric("GCRuns/sec", "metric", "runs")
 	numMalloc := structures.CreateMetric("mallocs/sec", "metric", "mallocs")
 	numFree := structures.CreateMetric("free/sec", "metric", "frees")
@@ -62,6 +73,18 @@ func InitMetricsMemStats() {
 		NumFree:    &numFree,
 		HeapAlloc:  &heapAlloc,
 		Pause:      &pause,
+	}
+
+	volontarySwitchs := structures.CreateMetric("VolontarySwitchs", "metric", "switches")
+	involontarySwitchs := structures.CreateMetric("InvolontarySwitchs", "metric", "switches")
+	softPageFault := structures.CreateMetric("SoftPageFaults", "metric", "faults")
+	hardPageFault := structures.CreateMetric("HardPageFaults", "metric", "faults")
+
+	GlobalRuntimeStats = RuntimeStats{
+		VolontarySwitchs:   &volontarySwitchs,
+		InvolontarySwitchs: &involontarySwitchs,
+		SoftPageFault:      &softPageFault,
+		HardPageFault:      &hardPageFault,
 	}
 }
 
@@ -83,4 +106,12 @@ func Handler() {
 
 	GlobalMetricsMemStats.Pause.Set(float64(stats.PauseTotalNs) - GlobalMetricsMemStats.LastPause)
 	GlobalMetricsMemStats.LastPause = float64(stats.PauseTotalNs)
+
+	var ru syscall.Rusage
+	syscall.Getrusage(syscall.RUSAGE_SELF, &ru)
+
+	GlobalRuntimeStats.VolontarySwitchs.Set(float64(ru.Nvcsw))
+	GlobalRuntimeStats.InvolontarySwitchs.Set(float64(ru.Nivcsw))
+	GlobalRuntimeStats.SoftPageFault.Set(float64(ru.Minflt))
+	GlobalRuntimeStats.HardPageFault.Set(float64(ru.Majflt))
 }
