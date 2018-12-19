@@ -104,6 +104,7 @@ func (transporter *Transporter) Connect() {
 	headers.Add("X-KM-SERVER", transporter.Config.ServerName)
 	headers.Add("X-PM2-VERSION", transporter.Version)
 	headers.Add("X-PROTOCOL-VERSION", "1")
+	headers.Add("User-Agent", "PM2 Agent Golang v"+transporter.Version)
 
 	c, _, err := transporter.websocketDialer().Dial(*transporter.wsNode, headers)
 	if err != nil {
