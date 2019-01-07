@@ -9,7 +9,7 @@ import (
 )
 
 func InitTracing(config *structures.Config) error {
-	reporter := zipkinhttpreporter.NewReporter("https://" + config.PublicKey + ":" + config.PublicKey + "@zipkin.cloud.pm2.io/api/v2/spans")
+	reporter := zipkinhttpreporter.NewReporter("https://" + config.PublicKey + ":" + config.PrivateKey + "@zipkin.cloud.pm2.io/api/v2/spans")
 
 	endpoint, err := openzipkin.NewEndpoint(config.Name, "")
 	if err != nil {
