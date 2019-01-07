@@ -79,6 +79,10 @@ func (pm2io *Pm2Io) Panic(err error) {
 	panic(err)
 }
 
+func (pm2io *Pm2Io) StartTracing() {
+	features.InitTracing(pm2io.Config)
+}
+
 func (pm2io *Pm2Io) prepareMetrics() {
 	metrics.InitMetricsMemStats()
 	services.AttachHandler(metrics.Handler)
