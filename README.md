@@ -153,6 +153,94 @@ func main() {
 }
 ```
 
+## Distributed Tracing
+NB: you must pass the same `context.Context` to your subfuncs (same traceID).
+It's very useful when you want the same trace for HTTP spans and your database spans
+
+[More informations on OpenCensus](https://opencensus.io/guides/)
+
+### HTTP
+OpenCensus will create another handler with wrapped functions. It's important to use contexts everytime
+
+For client and server, it use B3 for communication by default
+
+[OpenCensus Documentation about ochttp](https://opencensus.io/guides/http/go/net_http/)
+```golang
+import (
+  "net/http"
+
+  "go.opencensus.io/plugin/ochttp"
+)
+
+handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+  context := r.Context()
+  // Not used here, but you must pass it to lower functions (espacially databases one)
+
+  log.Println("request")
+  for i := 0; i < 1000; i++ {
+    fmt.Fprintf(w, "Hello")
+  }
+})
+
+ocHandler := &ochttp.Handler{Handler: handler, IsPublicEndpoint: true}
+http.ListenAndServe(":8089", ocHandler)
+```
+
+### Mongo
+With MongoDB wrapper you have to use a context, do don't create a new one and use the first one created
+
+[OpenCensus Documentation about mongowrapper](https://opencensus.io/guides/integrations/mongodb/go_driver/)
+
+### SQL
+You can use it by registration or wrapping, here we use the first one
+
+[OpenCensus Documentation about ocsql](https://opencensus.io/guides/integrations/sql/go_sql/)
+
+```golang
+import (
+  "database/sql"
+
+  "contrib.go.opencensus.io/integrations/ocsql"
+)
+
+// Create a new driver registred with OpenCensus
+driverName, err := ocsql.Register("postgres", ocsql.WithOptions(ocsql.TraceOptions{
+  AllowRoot:    true,
+  Ping:         true,
+  RowsNext:     false,
+  RowsClose:    false,
+  RowsAffected: true,
+  LastInsertID: true,
+  Query:        true,
+  QueryParams:  false, // Don't send value of $1, $2... args
+}))
+if err != nil {
+  log.Fatalf("Failed to register the ocsql driver: %v", err)
+  return
+}
+
+// Then use the OpenCensus driver as usual
+db, err := sql.Open(driverName, fmt.Sprintf(
+  "user=%s password=%s dbname=%s host=%s port=%s sslmode=disable",
+  cfg.User, cfg.Password, cfg.Database, cfg.Host, cfg.Port))
+if err != nil {
+  err = errors.Wrapf(err,
+    "Couldn't open connection to postgre database",
+  )
+  return
+}
+
+// Use QueryContext for each query
+func DeleteThings(ctx context.Context) error {
+  q, err := db.QueryContext(ctx, "DROP TABLE things;")
+	q.Close()
+	return err
+}
+```
+
+### Other integrations
+We didn't test others integrations, but everything compatible with OpenCensus/Zipkin should work without any problem
+
 ## Known problems
 ### x509: unknown authority
 You must have the **Let's Encrypt Authority X3** certificate on your machine/container to connect to our backend
