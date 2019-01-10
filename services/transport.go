@@ -68,7 +68,7 @@ func (transporter *Transporter) GetServer() *string {
 
 	res, err := transporter.httpClient().Post("https://"+*transporter.Config.Node+"/api/node/verifyPM2", "application/json", bytes.NewBuffer(jsonValue))
 	if err != nil {
-		log.Println(err)
+		log.Println("Error while trying to get endpoints (verifypm2)", err)
 		return nil
 	}
 	data, err := ioutil.ReadAll(res.Body)
@@ -79,6 +79,7 @@ func (transporter *Transporter) GetServer() *string {
 	response := VerifyResponse{}
 	err = json.Unmarshal(data, &response)
 	if err != nil {
+		log.Println("PM2 server sent an incorrect response")
 		return nil
 	}
 	return &response.Endpoints.WS
@@ -108,6 +109,7 @@ func (transporter *Transporter) Connect() {
 
 	c, _, err := transporter.websocketDialer().Dial(*transporter.wsNode, headers)
 	if err != nil {
+		log.Println("Error while connecting to WS", err)
 		time.Sleep(2 * time.Second)
 		transporter.isConnecting = false
 		transporter.CloseAndReconnect()

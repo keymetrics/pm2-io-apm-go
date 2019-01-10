@@ -194,6 +194,8 @@ With MongoDB wrapper you have to use a context, do don't create a new one and us
 ### SQL
 You can use it by registration or wrapping, here we use the first one
 
+NB: if you have some ocsql.warning, try to update your dependency
+
 [OpenCensus Documentation about ocsql](https://opencensus.io/guides/integrations/sql/go_sql/)
 
 ```golang

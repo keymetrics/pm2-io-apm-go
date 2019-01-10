@@ -79,8 +79,9 @@ func (pm2io *Pm2Io) Panic(err error) {
 	panic(err)
 }
 
-func (pm2io *Pm2Io) StartTracing() {
-	features.InitTracing(pm2io.Config)
+// StartTracing add global handlers for OpenCensus providers
+func (pm2io *Pm2Io) StartTracing() error {
+	return features.InitTracing(pm2io.Config, pm2io.transporter)
 }
 
 func (pm2io *Pm2Io) prepareMetrics() {
