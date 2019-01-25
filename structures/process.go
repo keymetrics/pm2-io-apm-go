@@ -13,9 +13,9 @@ type Process struct {
 	PmUptime    int64              `json:"pm_uptime,omitempty"`
 	Status      string             `json:"status,omitempty"`
 	PmID        int                `json:"pm_id"`
-	CPU         float64            `json:"cpu,omitempty"`
+	CPU         float64            `json:"cpu"`
 	Rev         string             `json:"rev"`
-	Memory      uint64             `json:"memory,omitempty"`
+	Memory      uint64             `json:"memory"`
 	NodeEnv     string             `json:"node_env,omitempty"`
 	AxmActions  []*Action          `json:"axm_actions,omitempty"`
 	AxmMonitor  map[string]*Metric `json:"axm_monitor,omitempty"`
