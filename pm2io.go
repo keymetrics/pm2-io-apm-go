@@ -163,7 +163,7 @@ func (pm2io *Pm2Io) getServer() structures.Server {
 	}
 }
 
-func (pm2io *Pm2Io) getProcesses() []structures.Process {
+func (pm2io *Pm2Io) getProcesses() []structures.StatusProcess {
 	p, err := process.NewProcess(int32(os.Getpid()))
 	if err != nil {
 		pm2io.Notifier.Error(err)
@@ -173,8 +173,8 @@ func (pm2io *Pm2Io) getProcesses() []structures.Process {
 		pm2io.Notifier.Error(err)
 	}
 
-	return []structures.Process{
-		structures.Process{
+	return []structures.StatusProcess{
+		structures.StatusProcess{
 			Pid:         p.Pid,
 			Name:        pm2io.Config.Name,
 			Interpreter: "golang",
