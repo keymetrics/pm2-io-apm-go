@@ -20,7 +20,7 @@ func InitTracing(config *structures.Config, transporter *services.Transporter) e
 	// OpenCensus
 	ze := zipkin.NewExporter(NewWsReporter(transporter), endpoint)
 	trace.RegisterExporter(ze)
-	trace.ApplyConfig(trace.Config{DefaultSampler: trace.AlwaysSample()})
+	trace.ApplyConfig(trace.Config{DefaultSampler: trace.ProbabilitySampler(0.5)})
 
 	return nil
 }
