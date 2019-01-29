@@ -18,7 +18,7 @@ pipeline:
 
   slack:
     image: plugins/slack
-    channel: ci
+    channel: dev-stream-ci
     when:
       status: [ success, failure ]
     template: |
