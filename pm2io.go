@@ -68,7 +68,7 @@ func (pm2io *Pm2Io) SendStatus() {
 	}
 
 	pm2io.transporter.Send("status", structures.Status{
-		Process: pm2io.getProcesses(),
+		Process: []structures.StatusProcess{pm2io.getProcess()},
 		Server:  pm2io.getServer(),
 	})
 }
@@ -163,7 +163,7 @@ func (pm2io *Pm2Io) getServer() structures.Server {
 	}
 }
 
-func (pm2io *Pm2Io) getProcesses() []structures.StatusProcess {
+func (pm2io *Pm2Io) getProcess() structures.StatusProcess {
 	p, err := process.NewProcess(int32(os.Getpid()))
 	if err != nil {
 		pm2io.Notifier.Error(err)
@@ -173,29 +173,28 @@ func (pm2io *Pm2Io) getProcesses() []structures.StatusProcess {
 		pm2io.Notifier.Error(err)
 	}
 
-	return []structures.StatusProcess{
-		structures.StatusProcess{
-			Pid:         p.Pid,
-			Name:        pm2io.Config.Name,
-			Interpreter: "golang",
-			RestartTime: 0,
-			CreatedAt:   pm2io.startTime.UnixNano() / int64(time.Millisecond),
-			ExecMode:    "fork_mode",
-			PmUptime:    pm2io.startTime.UnixNano() / int64(time.Millisecond),
-			Status:      "online",
-			PmID:        0,
-			CPU:         cp,
-			Memory:      uint64(metrics.GlobalMetricsMemStats.HeapAlloc.Value),
-			AxmActions:  services.Actions,
-			AxmMonitor:  services.GetMetricsAsMap(),
-			AxmOptions: structures.Options{
-				HeapDump:     true,
-				Profiling:    true,
-				CustomProbes: true,
-				Apm: structures.Apm{
-					Type:    "golang",
-					Version: version,
-				},
+	return structures.StatusProcess{
+		Pid:         p.Pid,
+		Name:        pm2io.Config.Name,
+		Interpreter: "golang",
+		RestartTime: 0,
+		CreatedAt:   pm2io.startTime.UnixNano() / int64(time.Millisecond),
+		ExecMode:    "fork_mode",
+		PmUptime:    pm2io.startTime.UnixNano() / int64(time.Millisecond),
+		Status:      "online",
+		PmID:        0,
+		CPU:         cp,
+		Memory:      uint64(metrics.GlobalMetricsMemStats.HeapAlloc.Value),
+		UniqueID:    pm2io.Config.ProcessUniqueID,
+		AxmActions:  services.Actions,
+		AxmMonitor:  services.GetMetricsAsMap(),
+		AxmOptions: structures.Options{
+			HeapDump:     true,
+			Profiling:    true,
+			CustomProbes: true,
+			Apm: structures.Apm{
+				Type:    "golang",
+				Version: version,
 			},
 		},
 	}

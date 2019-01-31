@@ -16,6 +16,7 @@ type StatusProcess struct {
 	CPU         float64            `json:"cpu"`
 	Rev         string             `json:"rev"`
 	Memory      uint64             `json:"memory"`
+	UniqueID    string             `json:"unique_id"`
 	NodeEnv     string             `json:"node_env,omitempty"`
 	AxmActions  []*Action          `json:"axm_actions,omitempty"`
 	AxmMonitor  map[string]*Metric `json:"axm_monitor,omitempty"`
