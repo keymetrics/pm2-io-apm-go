@@ -1,31 +1,30 @@
+---
+kind: pipeline
+name: Build and tests
+
 workspace:
   base: /go
   path: src/github.com/keymetrics/pm2-io-apm-go
 
-pipeline:
-  tests:
-    image: golang:latest
-    secrets: [ cc_test_reporter_id ]
-    commands:
-      - go get -v
-      - go get gopkg.in/h2non/gock.v1
-      - curl -L https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64 > ./cc-test-reporter
-      - chmod +x ./cc-test-reporter
-      - ./cc-test-reporter before-build
-      - go test -v -coverprofile=c.out -covermode=atomic $(go list ./...)
-      - ./cc-test-reporter after-build --exit-code 0 || echo “Skipping CC coverage upload” or upload-coverage || echo “Skipping CC coverage upload”
-      - go build
+steps:
+- name: tests
+  image: golang:latest
+  commands:
+  - go get -v
+  - go get gopkg.in/h2non/gock.v1
+  - "curl -L https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64 > ./cc-test-reporter"
+  - chmod +x ./cc-test-reporter
+  - ./cc-test-reporter before-build
+  - go test -v -coverprofile=c.out -covermode=atomic $(go list ./...)
+  - "./cc-test-reporter after-build --exit-code 0 || echo “Skipping CC coverage upload” or upload-coverage || echo “Skipping CC coverage upload”"
+  - go build
+  environment:
+    CC_TEST_REPORTER_ID:
+      from_secret: coverage_token
 
-  slack:
-    image: plugins/slack
-    channel: dev-stream-ci
-    when:
-      status: [ success, failure ]
-    template: |
-      {{#success build.status}}
-        pm2-io-apm-go {{ build.commit }} on {{ build.branch }} succeeded @{{ build.author }}
-      {{else}}
-        pm2-io-apm-go build {{ build.number }} on {{ build.branch }} failed @{{ build.author }}
-      {{/success}}
-      see {{ build.link }}
-    secrets: [ slack_webhook ]
+---
+kind: secret
+name: coverage_token
+get:
+  path: secret/drone/codeclimate
+  name: token
