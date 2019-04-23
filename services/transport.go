@@ -137,10 +137,7 @@ func (transporter *Transporter) Connect() {
 		for {
 			<-transporter.serverTicker.C
 			srv := transporter.GetServer()
-			if srv == nil {
-				return
-			}
-			if *srv != *transporter.wsNode {
+			if srv != nil && *srv != *transporter.wsNode {
 				transporter.wsNode = srv
 				transporter.CloseAndReconnect()
 			}
@@ -162,11 +159,10 @@ func (transporter *Transporter) SetHandlers() {
 		for {
 			<-transporter.heartbeatTicker.C
 			transporter.mu.Lock()
-			errPinger := transporter.ws.WriteMessage(websocket.PingMessage, []byte{})
+			err := transporter.ws.WriteMessage(websocket.PingMessage, []byte{})
 			transporter.mu.Unlock()
-			if errPinger != nil {
+			if err != nil {
 				transporter.CloseAndReconnect()
-				return
 			}
 		}
 	}()
