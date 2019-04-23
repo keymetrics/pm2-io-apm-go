@@ -137,6 +137,9 @@ func (transporter *Transporter) Connect() {
 		for {
 			<-transporter.serverTicker.C
 			srv := transporter.GetServer()
+			if srv == nil {
+				return
+			}
 			if *srv != *transporter.wsNode {
 				transporter.wsNode = srv
 				transporter.CloseAndReconnect()
